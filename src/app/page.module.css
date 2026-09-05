@@ -1,0 +1,24 @@
+.main {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+.main h1 {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  letter-spacing: -0.05em;
+}
+.main p {
+  font-size: 1.25rem;
+}
+.mark {
+  width: 6rem;
+  height: 6rem;
+}
+.note {
+  color: #655f58;
+  font-size: 0.9rem !important;
+}

@@ -1,0 +1,81 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: recipes_test
+          POSTGRES_USER: recipes
+          POSTGRES_PASSWORD: ci-only-password
+          PGDATA: /var/lib/postgresql/18/docker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U recipes -d recipes_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://recipes:ci-only-password@127.0.0.1:5432/recipes_test
+      DATABASE_QUERY_TIMEOUT_MS: "2000"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - run: npm ci
+        timeout-minutes: 5
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run test:integration
+      - run: npm run build
+        env:
+          NODE_ENV: production
+      - run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
+      - run: npm run test:e2e
+        timeout-minutes: 5
+      - run: docker build --tag recipes:ci .
+        timeout-minutes: 10
+      - run: npm run docker:config
+      - name: Production container smoke
+        env:
+          RECIPES_APP_IMAGE: recipes:ci
+          POSTGRES_IMAGE: postgres:18-alpine
+          DATABASE_URL: postgresql://recipes:compose-only-password@postgres:5432/recipes
+          POSTGRES_PASSWORD: compose-only-password
+          RECIPES_POSTGRES_DATA_DIR: ${{ runner.temp }}/recipes-phase3-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          mkdir -p -- "$RECIPES_POSTGRES_DATA_DIR"
+          docker compose -f compose.production.yaml up -d --wait
+          node scripts/smoke/production-container.mjs
+          if docker compose -f compose.production.yaml logs app | grep -E 'EROFS|permission denied'; then exit 1; fi
+        timeout-minutes: 5
+      - name: Clean production smoke resources
+        if: always()
+        env:
+          RECIPES_APP_IMAGE: recipes:ci
+          POSTGRES_IMAGE: postgres:18-alpine
+          DATABASE_URL: postgresql://recipes:compose-only-password@postgres:5432/recipes
+          POSTGRES_PASSWORD: compose-only-password
+          RECIPES_POSTGRES_DATA_DIR: ${{ runner.temp }}/recipes-phase3-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          docker compose -f compose.production.yaml down --remove-orphans
+          case "$RECIPES_POSTGRES_DATA_DIR" in
+            "$RUNNER_TEMP"/recipes-phase3-postgres-*) sudo rm -rf -- "$RECIPES_POSTGRES_DATA_DIR" ;;
+            *) echo "Refusing unexpected cleanup path" >&2; exit 1 ;;
+          esac

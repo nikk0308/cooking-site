@@ -1,0 +1,59 @@
+name: recipes
+services:
+  app:
+    image: ${RECIPES_APP_IMAGE:?set RECIPES_APP_IMAGE to an immutable digest reference}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL server-side}
+      DATABASE_QUERY_TIMEOUT_MS: "2000"
+    ports:
+      - "127.0.0.1:3200:3000"
+    networks: [edge, database]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1770,uid=10001,gid=10001
+      - /app/.next/cache:rw,noexec,nosuid,size=128m,mode=1770,uid=10001,gid=10001
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    restart: unless-stopped
+    pids_limit: 256
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+  postgres:
+    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE to an approved immutable digest reference}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-recipes}
+      POSTGRES_USER: ${POSTGRES_USER:-recipes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD server-side}
+      PGDATA: /var/lib/postgresql/18/docker
+    volumes:
+      - ${RECIPES_POSTGRES_DATA_DIR:?set RECIPES_POSTGRES_DATA_DIR to the external PostgreSQL host data directory}:/var/lib/postgresql
+    networks: [database]
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+networks:
+  edge:
+  database:
+    internal: true
+# Future media bind mount (not enabled in Phase 3):
+# source: /opt/docker-data/recipes/media
+# target: /app/media
