@@ -13,7 +13,7 @@ CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 FROM dependencies AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
-RUN npm run build
+RUN mkdir -p public && npm run build
 
 FROM node:24.20.0-bookworm-slim AS runtime
 ENV NODE_ENV=production \
