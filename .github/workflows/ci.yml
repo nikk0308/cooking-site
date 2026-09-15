@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feat/domain-model]
 
 permissions:
   contents: read
@@ -41,6 +41,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:unit
+      - run: npm run db:check
+      - run: npm run db:drift-check
       - run: npm run test:integration
       - run: npm run build
         env:
