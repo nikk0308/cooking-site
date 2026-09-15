@@ -8,6 +8,8 @@
 - Run relevant format, lint, type, test, build, and Docker checks.
 - Commit, push, pull request, merge, and deploy are separate stages; do none implicitly.
 - PostgreSQL NUMERIC domain values cross boundaries as strings. Use `decimal.js`, never implicit JavaScript float arithmetic.
+- Never convert MASS, VOLUME, or COUNT across dimensions without an explicit ingredient-specific contract.
+- Never treat missing or dimension-incompatible nutrition as zero; expose incomplete coverage.
 - Future public recipe reads must enforce the publication boundary at the data layer.
 - Production rootfs is read-only except explicit mounts/tmpfs: `/tmp`, `/app/.next/cache`, and future `/app/media`.
 
