@@ -14,12 +14,16 @@ import {
 import { ingredients } from "./ingredients";
 import { recipeStatusEnum } from "./enums";
 import { units } from "./units";
+import { media } from "./media";
 
 export const recipes = pgTable(
   "recipes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     title: varchar("title", { length: 256 }).notNull(),
+    coverMediaId: uuid("cover_media_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
     slug: varchar("slug", { length: 256 }).notNull(),
     description: text("description"),
     baseServings: integer("base_servings").notNull(),

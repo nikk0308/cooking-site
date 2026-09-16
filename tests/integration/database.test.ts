@@ -9,6 +9,8 @@ import { standardUnits } from "@/modules/units/unit";
 import { parseDecimal } from "@/shared/decimal/decimal";
 
 const sourceUrl = process.env.DATABASE_URL;
+if (!sourceUrl)
+  throw new Error("DATABASE_URL is required for PostgreSQL integration");
 const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
 const databaseNames = [
   `recipes_phase4_a_${suffix}`,
@@ -27,7 +29,7 @@ async function expectConstraint(query: Promise<unknown>): Promise<void> {
   await expect(query).rejects.toMatchObject({ code: expect.any(String) });
 }
 
-describe.skipIf(!sourceUrl)("Phase 4 PostgreSQL domain schema", () => {
+describe("Phase 4 PostgreSQL domain schema", () => {
   beforeAll(async () => {
     const adminUrl = new URL(sourceUrl!);
     adminUrl.pathname = "/postgres";
@@ -58,8 +60,11 @@ describe.skipIf(!sourceUrl)("Phase 4 PostgreSQL domain schema", () => {
         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
       );
       expect(tables.rows.map((row) => row.table_name)).toEqual([
+        "admin_sessions",
+        "admin_users",
         "ingredient_nutrition",
         "ingredients",
+        "media",
         "recipe_ingredients",
         "recipe_steps",
         "recipes",

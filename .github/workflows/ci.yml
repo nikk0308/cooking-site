@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, feat/domain-model]
+    branches: [main, "feat/**"]
 
 permissions:
   contents: read
@@ -51,33 +51,11 @@ jobs:
         timeout-minutes: 5
       - run: npm run test:e2e
         timeout-minutes: 5
-      - run: docker build --tag recipes:ci .
+      - run: docker build --tag recipes:v01 .
         timeout-minutes: 10
-      - run: npm run docker:config
-      - name: Production container smoke
-        env:
-          RECIPES_APP_IMAGE: recipes:ci
-          POSTGRES_IMAGE: postgres:18-alpine
-          DATABASE_URL: postgresql://recipes:compose-only-password@postgres:5432/recipes
-          POSTGRES_PASSWORD: compose-only-password
-          RECIPES_POSTGRES_DATA_DIR: ${{ runner.temp }}/recipes-phase3-postgres-${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          mkdir -p -- "$RECIPES_POSTGRES_DATA_DIR"
-          docker compose -f compose.production.yaml up -d --wait
-          node scripts/smoke/production-container.mjs
-          if docker compose -f compose.production.yaml logs app | grep -E 'EROFS|permission denied'; then exit 1; fi
+      - run: docker build --target maintenance --tag recipes:v01-maintenance .
         timeout-minutes: 5
-      - name: Clean production smoke resources
-        if: always()
-        env:
-          RECIPES_APP_IMAGE: recipes:ci
-          POSTGRES_IMAGE: postgres:18-alpine
-          DATABASE_URL: postgresql://recipes:compose-only-password@postgres:5432/recipes
-          POSTGRES_PASSWORD: compose-only-password
-          RECIPES_POSTGRES_DATA_DIR: ${{ runner.temp }}/recipes-phase3-postgres-${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          docker compose -f compose.production.yaml down --remove-orphans
-          case "$RECIPES_POSTGRES_DATA_DIR" in
-            "$RUNNER_TEMP"/recipes-phase3-postgres-*) sudo rm -rf -- "$RECIPES_POSTGRES_DATA_DIR" ;;
-            *) echo "Refusing unexpected cleanup path" >&2; exit 1 ;;
-          esac
+      - run: npm run docker:config
+      - name: Production container smoke and cleanup
+        run: node scripts/smoke/production-local.mjs
+        timeout-minutes: 5

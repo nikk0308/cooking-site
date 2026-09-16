@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 const required = [
+  "RECIPES_MEDIA_DIR",
   "RECIPES_APP_IMAGE",
   "POSTGRES_IMAGE",
   "DATABASE_URL",
@@ -13,6 +14,10 @@ const cleanEnvironment = { ...process.env };
 for (const name of required) delete cleanEnvironment[name];
 
 const productionEnvironment = {
+  RECIPES_MEDIA_DIR: path.join(
+    os.tmpdir(),
+    "recipes-compose-media-placeholder",
+  ),
   ...cleanEnvironment,
   RECIPES_APP_IMAGE: "recipes:test",
   POSTGRES_IMAGE: "postgres:18-alpine",
