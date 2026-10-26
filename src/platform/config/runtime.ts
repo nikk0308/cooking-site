@@ -1,5 +1,6 @@
 import { z } from "zod";
 export const runtimeConfigSchema = z.object({
+  MEDIA_ROOT: z.string().min(1).default(".local-media"),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),

@@ -19,5 +19,6 @@ test-results
 id_rsa*
 id_ed25519*
 media
+.local-media
 uploads
 *.log

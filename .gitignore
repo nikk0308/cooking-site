@@ -55,7 +55,8 @@ next-env.d.ts
 *.sqlite
 *.sqlite3
 *.db
-media/
+/media/
+/.local-media/
 uploads/
 *.bak
 *.backup

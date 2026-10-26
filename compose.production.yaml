@@ -4,6 +4,8 @@ services:
     image: ${RECIPES_APP_IMAGE:?set RECIPES_APP_IMAGE to an immutable digest reference}
     environment:
       NODE_ENV: production
+      MEDIA_ROOT: /app/media
+      SITE_URL: ${SITE_URL:-}
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL server-side}
       DATABASE_QUERY_TIMEOUT_MS: "2000"
     ports:
@@ -13,6 +15,8 @@ services:
       postgres:
         condition: service_healthy
     read_only: true
+    volumes:
+      - ${RECIPES_MEDIA_DIR:?set RECIPES_MEDIA_DIR to the external media directory}:/app/media
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m,mode=1770,uid=10001,gid=10001
       - /app/.next/cache:rw,noexec,nosuid,size=128m,mode=1770,uid=10001,gid=10001
@@ -54,6 +58,3 @@ networks:
   edge:
   database:
     internal: true
-# Future media bind mount (not enabled in Phase 3):
-# source: /opt/docker-data/recipes/media
-# target: /app/media

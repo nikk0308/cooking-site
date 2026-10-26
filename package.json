@@ -17,12 +17,14 @@
     "test": "npm run test:unit",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "test:e2e": "playwright test",
+    "test:e2e": "tsx scripts/test-e2e.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "node scripts/ci/migration-history.mjs",
     "db:drift-check": "node scripts/ci/migration-drift.mjs",
-    "docker:config": "node scripts/ci/compose-config.mjs"
+    "docker:config": "node scripts/ci/compose-config.mjs",
+    "admin:create": "tsx scripts/admin-create.ts",
+    "db:seed-demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",
@@ -44,6 +46,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "prettier": "^3.9.6",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^5.0.0"
   }

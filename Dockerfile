@@ -10,6 +10,10 @@ COPY . .
 EXPOSE 3000
 CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
+FROM dependencies AS maintenance
+COPY . .
+CMD ["npm", "run", "db:migrate"]
+
 FROM dependencies AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
