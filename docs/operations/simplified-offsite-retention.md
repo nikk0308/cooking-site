@@ -114,7 +114,8 @@ must preserve the original inventory and delete zero objects with an empty plan.
 `scripts/culinote_offsite.py` is the versioned server entrypoint. For recovery,
 install it at `/opt/docker-stacks/recipes/backup/offsite/offsite.py`
 beside `scripts/offsite_retention.py` in that server directory. Retain
-the executable entrypoint permissions and provision credentials separately; no
+LF line endings (including the executable shebang), retain executable entrypoint
+permissions and provision credentials separately; no
 credentials or private identity are included in these sources. The test module
 remains `scripts/test_offsite_retention.py`.
 
@@ -136,3 +137,19 @@ Activation sources belong to `infra/culinote-automatic-retention`, independently
 of Backend v0.2. The PR runs the retention suite on Linux without credentials or
 network S3 access, alongside existing application CI. Application runtime, local
 backup code, credentials, private identity and OCI registry are unchanged.
+
+## Controlled activation evidence
+
+On 2026-10-28 the fresh pre-activation plan had zero candidates and hash
+`b43746c5f77320bc45d4484c8894b7d56ec89adf9ef7ef7b41b23739ca0709d1`.
+After a controlled normal service run reverified the existing backup and updated
+its success timestamp, the GC plan hash became
+`eb20d64c5ea5b338c1cc13ca84663507760100fe05e815f99a7a2c9ceb112edd`.
+Both the post-upload GC cycle and an explicit repeat passed with zero deletions;
+all ten remote objects and their ETags were preserved. Both daily snapshots
+remain; weekly `2026-W44` and monthly `2026-10` reference the protected recovered
+snapshot `20261027T155249Z-012c8349-1a6e2ddc5110`.
+
+These hashes are evidence, not reusable approval for a later inventory. The
+automatic workflow always rebuilds its plan. Real nonempty GC has been tested
+only with isolated fixtures; no production object was deleted for activation.
