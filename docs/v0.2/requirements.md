@@ -1,4 +1,4 @@
-# Phase 6.4 requirements and delivery boundary
+# Backend v0.2 delivery boundaries
 
 Base: `cea6a08d454a7812b83bed4e24302dcd884b6b38`. Production remains v0.1.
 
@@ -11,7 +11,9 @@ Implemented foundation:
 - Shared Decimal, unit conversion, scaling, basket aggregation and nutrition services, reused by new shopping/document adapters.
 - Unit, PostgreSQL upgrade/integration and real Chromium persistence tests. Existing v0.1 tests remain.
 
-Not delivered in this phase: personal recipe screens, favorite buttons, shopping UI, public catalog HTTP API, bulk import, user-facing export/import, accounts, remote synchronization or application deployment. Browser repositories are application services ready for subsequent UI integration, not automatically initialized by v0.1 screens.
+Phase 6.4 supplied these contracts and repositories. Phase 6.5 adds personal recipe screens, favorite controls, mixed favorites, bounded public/catalog reads and complete browser export/import. The provider opens IndexedDB after hydration without migrating the old basket or uploading data. See personal-data-workflows.md for acceptance walkthroughs.
+
+Still deferred: unified shopping UI and explicit basket migration activation (6.6), catalog administration/bulk importer (6.7), release deployment (6.8), accounts and remote synchronization. Production stays v0.1; migration 0002 is not applied there by this work.
 
 Publication remains a data-layer rule: `recipeRepository.resolvePublishedRecipes` filters PUBLISHED; `resolvePublicDocuments` uses only that method. Administrative writes retain session and same-origin checks. No new public mutation endpoint exists.
 

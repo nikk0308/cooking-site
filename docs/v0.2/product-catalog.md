@@ -14,3 +14,5 @@ Normalization: NFKC, lowercase, ё->е, collapsed whitespace, trimmed ends. Post
 `catalogRepository` is intentionally read-only: bounded name/alias search (1–50 rows), category filter, up to 100 requested UUIDs/aliases and 200 categories. Current substring lookup may scan; Phase 6.7 must add measured indexing/pagination before large imports. There are no new public mutation routes. Existing ingredient admin POST still requires session and same-origin validation; old saves leave category/provenance extension fields intact.
 
 No brands, prices, store SKUs or package model are introduced. Phase 6.7 bulk import must target these tables, reuse normalization, preserve UUIDs, validate units/source provenance and provide dry-run/conflict reports with transactional application. Import is not implemented in Phase 6.4.
+
+Phase 6.5 exposes explicit bounded read-only search at `GET /api/catalog?query=...` (maximum ten results). Personal recipe selection snapshots the catalog identity and compatible nutrition including basis unit/source. Manual personal products never create PostgreSQL entries. Administration/import remains Phase 6.7.

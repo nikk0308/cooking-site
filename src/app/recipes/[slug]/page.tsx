@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { recipeRepository } from "@/modules/recipes/repository";
 import { Cover } from "@/components/cover";
 import { RecipeControls } from "@/components/recipe-controls";
+import { FavoriteButton } from "@/components/favorite-button";
 export const dynamic = "force-dynamic";
 const find = cache((slug: string) =>
   recipeRepository().findPublishedRecipeBySlug(slug),
@@ -54,6 +55,10 @@ export default async function RecipePage({
   return (
     <main>
       <h1>{recipe.title}</h1>
+      <FavoriteButton
+        reference={{ kind: "PUBLIC", id: recipe.id }}
+        title={recipe.title}
+      />
       <div className="recipe-top">
         <Cover image={recipe.cover} title={recipe.title} />
         <div>

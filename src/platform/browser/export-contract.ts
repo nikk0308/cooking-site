@@ -4,7 +4,7 @@ import { uuid } from "@/modules/recipes/reference";
 import { favoritesDocument } from "@/modules/favorites/document";
 import { shoppingDocument } from "@/modules/shopping/document";
 
-// Portable envelope contract only. A user-facing import/export flow is deferred.
+// Portable envelope shared by validated browser-only import and export.
 export const browserExport = z
   .object({
     application: z.literal("culinote"),

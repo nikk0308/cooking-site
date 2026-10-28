@@ -14,4 +14,4 @@ Before an eventual v0.2 production migration:
 
 The owner chose to rebuild OCI images from GitHub rather than archive them. Preserve the exact commit, lockfile, Dockerfiles and toolchain requirements; test rebuildability on the replacement host. A Git commit alone does not guarantee that external registries/dependencies remain available.
 
-Local IndexedDB content is not included in server backups. User-initiated export is the future portable recovery path for private browser data; site deployment must not clear/reset browser storage.
+Local IndexedDB content is not included in server backups. Phase 6.5 implements user-initiated export/import as the portable recovery path for private browser data; site deployment must not clear/reset browser storage. Export before changing browser profiles/devices. Neither this phase nor merging its PR authorizes production migration/deployment.

@@ -4,13 +4,15 @@
 
 Versioned contracts, browser repositories/Blob ownership, favorites, shopping persistence/migration and shared calculations, additive catalog migration/read interfaces, portable export schema and tests. No user-facing personal recipe/favorite/shopping UI is shipped in this foundation.
 
-## 6.5 public/personal recipes and favorites
+## 6.5 public/personal recipes and favorites — implemented
 
 - Reuse published-only server reads and PUBLIC/LOCAL references; inaccessible public recipes stay unavailable.
 - Wire personal CRUD/duplicate/photo and favorite UI to IndexedDB. Reload retains data; quota/corruption/upgrades have actionable errors without reset.
 - Use stable local product IDs; no name-based identity guessing. Local content/photos never auto-upload.
 - Implement user-initiated bounded export/import with image decoding, validation, atomicity and collision policy; preserve originals on failure.
 - Verify mobile/browser E2E, accessibility, no SSR/hydration interaction race and no private outbound payloads.
+
+Routes and owner walkthrough: personal-data-workflows.md. Atomic portability uses conservative conflict rejection; no destructive conflict resolver or import-as-copies is included. Images remain browser-owned. No shopping UI switch, production deployment or production migration is included.
 
 ## 6.6 unified shopping
 

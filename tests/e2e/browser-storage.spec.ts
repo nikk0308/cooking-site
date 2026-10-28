@@ -127,7 +127,7 @@ test("local CRUD, Blob persistence, duplication, favorites and deletion stay in 
     original: undefined,
     missingBlob: null,
     unavailable: true,
-    copy: "Personal recipe (copy)",
+    copy: "Personal recipe (копия)",
     overrides: [{ id: "stable-row", quantity: "999", purchased: true }],
   });
   expect(outbound).toEqual([]);

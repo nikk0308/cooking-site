@@ -97,11 +97,15 @@ export function transaction<T>(
   stores: string[],
   mode: IDBTransactionMode,
   run: (tx: IDBTransaction, result: (value: T) => void) => void,
+  expectedRevision?: number,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     let tx: IDBTransaction;
     try {
-      tx = db.transaction(stores, mode);
+      tx = db.transaction(
+        mode === "readwrite" ? [...new Set([...stores, "documents"])] : stores,
+        mode,
+      );
     } catch (error) {
       reject(storageError(error));
       return;
@@ -110,11 +114,35 @@ export function transaction<T>(
     tx.oncomplete = () => resolve(result);
     tx.onabort = () => reject(storageError(failures.get(tx) ?? tx.error));
     try {
-      run(tx, (value) => {
-        result = value;
-      });
+      const execute = () =>
+        run(tx, (value) => {
+          result = value;
+        });
+      if (mode === "readwrite") {
+        const docs = tx.objectStore("documents");
+        received(tx, docs.get("revision"), (record) => {
+          const revision = readRevision(record);
+          if (expectedRevision !== undefined && expectedRevision !== revision)
+            throw new BrowserStorageError("VERIFY_FAILED");
+          docs.put({ key: "revision", schemaVersion: 1, value: revision + 1 });
+          execute();
+        });
+      } else execute();
     } catch (error) {
       abort(tx, error);
     }
   });
+}
+
+export function readRevision(record: unknown): number {
+  if (record === undefined) return 0;
+  const r = record as { schemaVersion: number; value: number };
+  if (
+    r.schemaVersion !== 1 ||
+    !Number.isSafeInteger(r.value) ||
+    r.value < 0 ||
+    r.value >= Number.MAX_SAFE_INTEGER
+  )
+    throw new BrowserStorageError("CORRUPTED");
+  return r.value;
 }

@@ -1,4 +1,5 @@
 // Browser-only composition surface: no fetch, server repository or automatic sync.
+export { exportBrowserData, prepareImport } from "./portability";
 export { openBrowserRepository } from "./repository";
 export {
   BrowserStorageError,
