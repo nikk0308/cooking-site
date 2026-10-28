@@ -1,7 +1,12 @@
 import contextlib
+import ast
 import datetime as dt
 import hashlib
 import json
+from pathlib import Path
+import tempfile
+import types
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -56,7 +61,32 @@ class API:
 
     @staticmethod
     def latest_local():
-        return True
+        success = API.current_inputs[1]
+        return Path(success["snapshot"].rsplit("-", 1)[0]), {}
+
+    @staticmethod
+    def now():
+        return dt.datetime.fromisoformat(API.current_inputs[1]["verified_utc"])
+
+    @staticmethod
+    def load_config():
+        return API.config
+
+    @staticmethod
+    def read_json(path):
+        return json.loads(path.read_text())
+
+    @staticmethod
+    def atomic(path, data):
+        path.write_text(json.dumps(data))
+
+    @staticmethod
+    def safe_code(exc):
+        return str(exc) if isinstance(exc, r.RetentionError) else type(exc).__name__
+
+    @staticmethod
+    def gc_event(event, **fields):
+        API.events.append({"event": event, **fields})
 
     @staticmethod
     def retention_inputs():
@@ -96,12 +126,20 @@ class RetentionTests(unittest.TestCase):
     def setUp(self):
         self.s3 = FakeS3()
         self.markers = []
+        state = tempfile.TemporaryDirectory(prefix="culinote-gc-test-")
+        self.addCleanup(state.cleanup)
+        API.STATE = Path(state.name)
+        API.events = []
+        API.config = {"deletion_enabled": True}
+        API.atomic(API.STATE / "retention-activation.json", {
+            "sole_workflow_writer": True, "bucket": r.BUCKET, "prefix": r.PREFIX,
+            "policy": {"daily": 2, "weekly": 1, "monthly": 1, "max_unique": 4}})
 
     def add(self, date, periods=True):
         index = len(self.markers)
         stamp = dt.datetime.fromisoformat(date).replace(tzinfo=dt.timezone.utc)
         sid = stamp.strftime("%Y%m%dT%H%M%SZ") + f"-{index:08x}-123456789abc"
-        marker = {"snapshot": sid, "backup_created_utc": stamp.isoformat(), "objects": {}}
+        marker = {"snapshot": sid, "backup_created_utc": stamp.isoformat(), "source_sha": "fixture-source", "objects": {}}
         for name in ["database.encrypted", "media.encrypted", "manifest.encrypted"]:
             key = f"culinote/blobs/{sid}/{name}"
             value = (sid + name).encode()
@@ -117,7 +155,8 @@ class RetentionTests(unittest.TestCase):
         latest = self.markers[-1]
         result = ({"snapshot": self.markers[protected]["snapshot"], "status": "PASS", "local_pipeline_test": False},
                 {"snapshot": latest["snapshot"], "complete_key": f"culinote/daily/{latest['snapshot']}/COMPLETE",
-                 "verified_utc": "2027-02-01T00:00:00+00:00"})
+                 "verified_utc": (r.stamp(latest) + dt.timedelta(hours=1)).isoformat(),
+                 "backup_created_utc": latest["backup_created_utc"], "remote_ciphertext_verification": "PASS"})
         API.current_inputs = (*result, None)
         return result
 
@@ -353,6 +392,146 @@ class RetentionTests(unittest.TestCase):
         self.assertEqual(fresh["delete_objects"], [])
         self.assertEqual(r.execute(API, self.s3, fresh, *self.args(), enabled=True, approved_hash=fresh["plan_sha256"]), 0)
         self.assertEqual(self.s3.deletes, deleted)
+
+    def test_enabled_empty_cycles_are_idempotent(self):
+        self.add("2026-10-01T03:00:00")
+        self.args()
+        before = dict(self.s3.objects)
+        for _ in range(2):
+            status = r.cycle(API, self.s3)
+            self.assertEqual(status["status"], "PASS")
+            self.assertEqual(status["deleted_objects"], 0)
+        self.assertEqual(self.s3.objects, before)
+
+    def test_enabled_cycle_deletes_only_fixture_candidates(self):
+        plan = self.rotation()
+        status = r.cycle(API, self.s3)
+        self.assertEqual(status["status"], "PASS")
+        self.assertEqual(status["deleted_objects"], len(plan["delete_objects"]))
+        self.assertEqual(len([e for e in API.events if e["event"] == "DELETE_PASS"]), len(plan["delete_objects"]))
+        self.assertEqual(r.cycle(API, self.s3)["deleted_objects"], 0)
+
+    def test_cycle_blocks_fifth_point_without_partial_cleanup(self):
+        for date in ["2026-09-01", "2026-10-01", "2026-10-12", "2026-10-14", "2026-10-15"]:
+            self.add(date + "T03:00:00")
+        self.args()
+        before = dict(self.s3.objects)
+        status = r.cycle(API, self.s3)
+        self.assertEqual(status["status"], "BLOCKED")
+        self.assertEqual(status["code"], "RECOVERY_REVALIDATION_REQUIRED")
+        self.assertEqual(self.s3.objects, before)
+
+    def test_cycle_unknown_object_isolated_error(self):
+        self.rotation()
+        self.s3.objects["culinote/unknown"] = b"unknown"
+        status = r.cycle(API, self.s3)
+        self.assertEqual(status["status"], "ERROR")
+        self.assertEqual(status["code"], "RETENTION_UNKNOWN_OR_DUPLICATE_KEY")
+        self.assertEqual(self.s3.deletes, [])
+
+    def test_cycle_requires_owner_receipt(self):
+        self.rotation()
+        (API.STATE / "retention-activation.json").unlink()
+        self.assertEqual(r.cycle(API, self.s3)["status"], "ERROR")
+        self.assertEqual(self.s3.deletes, [])
+
+    def test_disabled_cycle_does_not_touch_s3(self):
+        self.rotation()
+        API.config["deletion_enabled"] = False
+        self.s3.error = "list"
+        self.assertEqual(r.cycle(API, self.s3)["status"], "DISABLED")
+        self.assertEqual(self.s3.deletes, [])
+
+    def test_cycle_failed_upload_never_deletes(self):
+        self.rotation()
+        proof, success, _ = API.current_inputs
+        API.current_inputs = (proof, success, {"utc": "2027-03-01T00:00:00+00:00"})
+        self.assertEqual(r.cycle(API, self.s3)["code"], "RETENTION_UNRESOLVED_UPLOAD_FAILURE")
+        self.assertEqual(self.s3.deletes, [])
+
+    def test_cycle_requires_current_verified_upload(self):
+        self.rotation()
+        proof, success, failure = API.current_inputs
+        for changes in [{"remote_ciphertext_verification": "FAIL"},
+                        {"backup_created_utc": "2020-01-01T00:00:00+00:00"}]:
+            API.current_inputs = (proof, dict(success, **changes), failure)
+            self.assertEqual(r.cycle(API, self.s3)["code"], "RETENTION_UPLOAD_NOT_CURRENT")
+        self.assertEqual(self.s3.deletes, [])
+
+    def test_cycle_requires_local_snapshot_binding(self):
+        self.rotation()
+        with patch.object(API, "latest_local", return_value=(Path("unuploaded-local"), {})):
+            self.assertEqual(r.cycle(API, self.s3)["code"], "RETENTION_UPLOAD_NOT_CURRENT")
+        self.assertEqual(self.s3.deletes, [])
+
+    def test_change_mid_gc_stops_before_blob_deletes(self):
+        self.rotation()
+        original = self.s3.delete_object
+        def concurrent(**kwargs):
+            original(**kwargs)
+            self.s3.objects["culinote/unknown"] = b"concurrent"
+        with patch.object(self.s3, "delete_object", side_effect=concurrent):
+            status = r.cycle(API, self.s3)
+        self.assertEqual(status["status"], "ERROR")
+        self.assertEqual(len(self.s3.deletes), 1)
+        self.assertTrue(self.s3.deletes[0].endswith("/COMPLETE"))
+
+    def workflow(self):
+        # Exercise the real Linux entrypoint functions without importing Linux
+        # fcntl/boto3 on Windows or ever constructing a production S3 client.
+        path = Path(__file__).with_name("culinote_offsite.py")
+        if not path.exists():
+            path = Path(__file__).with_name("offsite.py")  # Installed server name.
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        functions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in ("main", "run_gc", "watchdog")]
+        module = types.ModuleType("culinote_workflow_fixture")
+        marker = self.markers[-1]
+        module.__dict__.update({"sys": sys, "retention": r, "STATE": API.STATE, "STAGING": API.STATE,
+            "load_config": API.load_config, "client": lambda: self.s3, "latest_local": API.latest_local,
+            "probe": lambda _: {}, "prepare": lambda *args: (API.STATE, marker),
+            "publish": lambda *args: f"culinote/daily/{marker['snapshot']}/COMPLETE",
+            "validate_marker": API.validate_marker, "get_marker": API.get_marker, "verify_object": API.verify_object,
+            "now": API.now, "atomic": API.atomic, "read_json": API.read_json,
+            "gc_event": API.gc_event, "safe_code": API.safe_code, "datetime": dt, "GateError": r.RetentionError,
+            "shutil": types.SimpleNamespace(disk_usage=lambda _: types.SimpleNamespace(free=20 * 1024**3)),
+            "fcntl": types.SimpleNamespace(flock=lambda *args: None, LOCK_EX=1, LOCK_NB=2)})
+        exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), "exec"), module.__dict__)
+        return module
+
+    def test_gc_failure_does_not_invalidate_upload_success(self):
+        self.add("2026-10-01T03:00:00")
+        self.args()
+        module = self.workflow()
+        with patch.dict(sys.modules, {module.__name__: module}):
+            with patch.object(r, "cycle", side_effect=OSError("Synthetic GC state write failure")):
+                module.main("upload")
+        success = API.read_json(API.STATE / "last-success.json")
+        self.assertEqual(success["remote_ciphertext_verification"], "PASS")
+        self.assertEqual(API.events[-1]["event"], "ERROR")
+
+    def test_failed_publish_does_not_call_gc(self):
+        self.add("2026-10-01T03:00:00")
+        self.args()
+        module = self.workflow()
+        with patch.object(module, "publish", side_effect=OSError("Upload failed")):
+            with patch.object(r, "cycle") as cycle:
+                with self.assertRaises(OSError):
+                    module.main("upload")
+                cycle.assert_not_called()
+        self.assertFalse((API.STATE / "last-success.json").exists())
+
+    def test_watchdog_warns_about_gc_without_failing_healthy_backup(self):
+        self.add("2026-10-01T03:00:00")
+        _, success = self.args()
+        API.atomic(API.STATE / "last-success.json", success)
+        module = self.workflow()
+        for code in ["RECOVERY_REVALIDATION_REQUIRED", "RETENTION_CONCURRENT_CHANGE"]:
+            API.atomic(API.STATE / "gc-status.json", {"status": "BLOCKED", "code": code,
+                       "updated_utc": API.now().isoformat()})
+            module.watchdog()
+            self.assertEqual(API.events[-1]["event"], "WATCHDOG_WARNING")
+            self.assertEqual(API.events[-1]["code"], code)
+        self.assertEqual(self.s3.deletes, [])
 
 
 if __name__ == "__main__":

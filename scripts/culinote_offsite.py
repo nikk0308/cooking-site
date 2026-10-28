@@ -56,7 +56,7 @@ def anonymous_denied(url):
 def probe(s3):
  s3.list_objects_v2(Bucket=BUCKET,Prefix="culinote/",MaxKeys=1)
  if not anonymous_denied(ORIGIN+"/?list-type=2&max-keys=1"):raise GateError("REMOTE_BUCKET_LISTING_PUBLIC")
- return {"authentication":"PASS","anonymous_listing":"DENIED","deletion_enabled":False}
+ return {"authentication":"PASS","anonymous_listing":"DENIED"}
 def latest_local():
  result=subprocess.check_output(["systemctl","show","recipes-backup.service","-p","Result","--value"],text=True).strip()
  if result!="success":raise GateError("LOCAL_BACKUP_SERVICE_NOT_SUCCESSFUL")
@@ -183,6 +183,16 @@ def retention_dry_run(s3,pending_success=None):
  plan=retention.plan(sys.modules[__name__],s3,proof,success,failure)
  atomic(STATE/"retention-dry-run.json",plan)
  return plan
+
+def gc_event(event,**fields):
+ print("CULINOTE_GC "+json.dumps({"event":event,**fields},sort_keys=True))
+
+def run_gc(s3):
+ try:return retention.cycle(sys.modules[__name__],s3)
+ except Exception as exc:
+  # Even failure to persist GC status must not invalidate a verified upload.
+  gc_event("ERROR",code=safe_code(exc))
+  return {"status":"ERROR","code":safe_code(exc)}
 def export_remote(s3):
  state=read_json(STATE/"last-success.json")
  marker=validate_marker(get_marker(s3,state["complete_key"]))
@@ -221,25 +231,34 @@ def watchdog():
   if period_key not in retention.period_keys(period_marker):raise GateError("PERIOD_REFERENCE_MISMATCH")
   for item in period_marker["objects"].values():verify_object(s3,item["key"],item)
  print("CULINOTE_OFFSITE_WATCHDOG_PASS snapshot="+s["snapshot"]+"; complete-and-full-ciphertext-sha256=PASS")
+ if load_config().get("deletion_enabled") is True:
+  try:
+   gc=read_json(STATE/"gc-status.json")
+   if gc.get("status")!="PASS" or gc.get("updated_utc","")<s["verified_utc"]:
+    gc_event("WATCHDOG_WARNING",code=gc.get("code","GC_STATUS_NOT_PASS"),gc_status=gc.get("status"))
+  except Exception:gc_event("WATCHDOG_WARNING",code="GC_STATUS_UNAVAILABLE")
 def main(mode="upload"):
  if mode=="watchdog":return watchdog()
  cfg=load_config();s3=client()
  if mode=="export":return export_remote(s3)
+ if mode=="gc":return run_gc(s3)
  if mode not in ("upload","retention-dry-run"):raise GateError("UNSUPPORTED_OFFSITE_MODE")
  lock=open(STATE/"upload.lock","a")
  try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
  except BlockingIOError:print("OFFSITE_SKIPPED_ALREADY_RUNNING");return
- if mode=="retention-dry-run":
-  retention_dry_run(s3);print("RETENTION_DRY_RUN_ONLY; deletion disabled");return
- probe_result=probe(s3)
- local,m=latest_local()
- if shutil.disk_usage(STAGING.parent).free<10*1024**3:raise GateError("OFFSITE_FREE_SPACE_BELOW_10_GIB")
- dest,marker=prepare(local,m,cfg)
- key=publish(s3,dest,marker)
- success={"snapshot":marker["snapshot"],"complete_key":key,"backup_created_utc":marker["backup_created_utc"],"verified_utc":now().isoformat(),"source_sha":marker["source_sha"],"remote_ciphertext_verification":"PASS","decryption_restore":("PASS" if (STATE/"remote-restore-proof.json").exists() and read_json(STATE/"remote-restore-proof.json").get("snapshot")==marker["snapshot"] and read_json(STATE/"remote-restore-proof.json").get("status")=="PASS" else "PENDING_OWNER_DRILL"),"probe":probe_result}
- retention_dry_run(s3,success)
- atomic(STATE/"last-success.json",success)
- print("CULINOTE_ENCRYPTED_OFFSITE_UPLOAD_VERIFIED snapshot="+marker["snapshot"]+"; ciphertext verified; consult remote-restore-proof for owner restore coverage")
+ try:
+  if mode=="retention-dry-run":
+   retention_dry_run(s3);print("RETENTION_DRY_RUN_ONLY; no deletion executed");return
+  probe_result=probe(s3)
+  local,m=latest_local()
+  if shutil.disk_usage(STAGING.parent).free<10*1024**3:raise GateError("OFFSITE_FREE_SPACE_BELOW_10_GIB")
+  dest,marker=prepare(local,m,cfg)
+  key=publish(s3,dest,marker)
+  success={"snapshot":marker["snapshot"],"complete_key":key,"backup_created_utc":marker["backup_created_utc"],"verified_utc":now().isoformat(),"source_sha":marker["source_sha"],"remote_ciphertext_verification":"PASS","decryption_restore":("PASS" if (STATE/"remote-restore-proof.json").exists() and read_json(STATE/"remote-restore-proof.json").get("snapshot")==marker["snapshot"] and read_json(STATE/"remote-restore-proof.json").get("status")=="PASS" else "PENDING_OWNER_DRILL"),"probe":probe_result}
+  atomic(STATE/"last-success.json",success)
+  print("CULINOTE_ENCRYPTED_OFFSITE_UPLOAD_VERIFIED snapshot="+marker["snapshot"]+"; ciphertext verified; consult remote-restore-proof for owner restore coverage")
+ finally:lock.close()
+ run_gc(s3)
 if __name__=="__main__":
  try:main(sys.argv[1] if len(sys.argv)>1 else "upload")
  except Exception as e:
