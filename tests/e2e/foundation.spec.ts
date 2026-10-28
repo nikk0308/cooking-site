@@ -53,6 +53,7 @@ test("public catalog, scaling, nutrition and aggregated basket on mobile", async
     .getByRole("button", { name: "Удалить Омлет", exact: true })
     .click();
   await expect(page.getByText("3 шт.", { exact: true })).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Очистить список" }).click();
   await expect(page.getByText("Список пуст.", { exact: false })).toBeVisible();
   expect(

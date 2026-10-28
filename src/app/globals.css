@@ -248,6 +248,39 @@ summary {
   padding: 12px 0 12px 8px;
   white-space: pre-line;
 }
+.shopping-items {
+  list-style: none;
+  padding: 0;
+}
+.shopping-items,
+[data-reference],
+[data-manual-id] {
+  overflow-wrap: anywhere;
+}
+.shopping-items strong {
+  display: block;
+  margin: 12px 0;
+}
+.shopping-items input[type="checkbox"],
+.shopping-filter input {
+  width: auto;
+}
+.shopping-items label {
+  overflow-wrap: anywhere;
+}
+.shopping-items code,
+[aria-label="Перенос старой корзины"] code {
+  overflow-wrap: anywhere;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .panel,
 fieldset {
   background: white;

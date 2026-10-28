@@ -20,6 +20,11 @@ import {
 } from "@/modules/shopping/document";
 import { basketKey, parseBasket } from "@/modules/basket/document";
 import {
+  legacyReceipt,
+  legacyPlan,
+  type LegacyPreview,
+} from "@/modules/shopping/legacy";
+import {
   BrowserStorageError,
   openBrowserDatabase,
   received,
@@ -28,13 +33,9 @@ import {
   readRevision,
 } from "./database";
 
-const receiptSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    raw: z.string().max(128 * 1024),
-    expected: z.string().max(2 * 1024 * 1024),
-    verified: z.boolean(),
-  })
+const receiptSchema = legacyReceipt;
+const checkpointSchema = z
+  .object({ before: shoppingDocument, after: shoppingDocument })
   .strict();
 const wrapperSchema = z
   .object({ key: z.string(), schemaVersion: z.literal(1), value: z.unknown() })
@@ -116,19 +117,26 @@ export async function openBrowserRepository(name?: string) {
     schema: z.ZodType<T>,
     empty: () => T,
     change: (value: T) => T,
+    revision?: number,
   ) =>
-    transaction<T>(db, ["documents"], "readwrite", (tx, done) => {
-      const store = tx.objectStore("documents");
-      received(tx, store.get(key), (record) => {
-        const value = schema.parse(
-          change(
-            record === undefined ? empty() : decode(schema, valueOf(record)),
-          ),
-        );
-        store.put({ key, schemaVersion: 1, value });
-        done(value);
-      });
-    });
+    transaction<T>(
+      db,
+      ["documents"],
+      "readwrite",
+      (tx, done) => {
+        const store = tx.objectStore("documents");
+        received(tx, store.get(key), (record) => {
+          const value = schema.parse(
+            change(
+              record === undefined ? empty() : decode(schema, valueOf(record)),
+            ),
+          );
+          store.put({ key, schemaVersion: 1, value });
+          done(value);
+        });
+      },
+      revision,
+    );
   const listFavorites = () =>
     doc("favorites", favoritesDocument, () => ({
       schemaVersion: 1 as const,
@@ -168,13 +176,171 @@ export async function openBrowserRepository(name?: string) {
   };
   const shopping = {
     get: () => doc("shopping", shoppingDocument, emptyShopping),
-    update: (change: (value: ShoppingDocument) => ShoppingDocument) =>
-      update("shopping", shoppingDocument, emptyShopping, change),
+    view() {
+      return transaction<{
+        document: ShoppingDocument;
+        revision: number;
+        checkpoint: z.infer<typeof checkpointSchema> | null;
+      }>(db, ["documents"], "readonly", (tx, done) => {
+        const store = tx.objectStore("documents");
+        received(tx, store.get("shopping"), (record) =>
+          received(tx, store.get("revision"), (revision) =>
+            received(tx, store.get("shopping:undo"), (checkpoint) => {
+              done({
+                document:
+                  record === undefined
+                    ? shoppingDocument.parse(emptyShopping())
+                    : decode(shoppingDocument, valueOf(record)),
+                revision: readRevision(revision),
+                checkpoint:
+                  checkpoint === undefined
+                    ? null
+                    : decode(checkpointSchema, valueOf(checkpoint)),
+              });
+            }),
+          ),
+        );
+      });
+    },
+    update: (
+      change: (value: ShoppingDocument) => ShoppingDocument,
+      revision?: number,
+    ) => update("shopping", shoppingDocument, emptyShopping, change, revision),
+    checkpoint: () =>
+      doc("shopping:undo", checkpointSchema.nullable(), () => null),
+    checkpointUpdate(
+      change: (value: ShoppingDocument) => ShoppingDocument,
+      revision: number,
+    ) {
+      return transaction<ShoppingDocument>(
+        db,
+        ["documents"],
+        "readwrite",
+        (tx, done) => {
+          const store = tx.objectStore("documents");
+          received(tx, store.get("shopping"), (record) => {
+            const before =
+              record === undefined
+                ? shoppingDocument.parse(emptyShopping())
+                : decode(shoppingDocument, valueOf(record));
+            const after = shoppingDocument.parse(change(before));
+            store.put({
+              key: "shopping:undo",
+              schemaVersion: 1,
+              value: { before, after },
+            });
+            store.put({ key: "shopping", schemaVersion: 1, value: after });
+            done(after);
+          });
+        },
+        revision,
+      );
+    },
+    undo() {
+      return transaction<void>(db, ["documents"], "readwrite", (tx, done) => {
+        const store = tx.objectStore("documents");
+        received(tx, store.get("shopping:undo"), (record) => {
+          if (!record) throw new BrowserStorageError("VERIFY_FAILED");
+          const checkpoint = decode(checkpointSchema, valueOf(record));
+          received(tx, store.get("shopping"), (current) => {
+            if (
+              JSON.stringify(decode(shoppingDocument, valueOf(current))) !==
+              JSON.stringify(checkpoint.after)
+            )
+              throw new BrowserStorageError("VERIFY_FAILED");
+            store.put({
+              key: "shopping",
+              schemaVersion: 1,
+              value: checkpoint.before,
+            });
+            store.delete("shopping:undo");
+            done();
+          });
+        });
+      });
+    },
   };
   return {
     close: () => db.close(),
     favorites,
     shopping,
+    async legacyPreview(
+      source: Pick<Storage, "getItem"> = localStorage,
+    ): Promise<LegacyPreview> {
+      let raw: string | null;
+      try {
+        raw = source.getItem(basketKey);
+      } catch (error) {
+        throw storageError(error);
+      }
+      return transaction<LegacyPreview>(
+        db,
+        ["documents"],
+        "readonly",
+        (tx, done) => {
+          const store = tx.objectStore("documents");
+          received(tx, store.get("shopping"), (target) =>
+            received(tx, store.get("migration:basket:v1"), (receipt) =>
+              received(tx, store.get("revision"), (revision) => {
+                done({
+                  raw,
+                  shopping:
+                    target === undefined
+                      ? shoppingDocument.parse(emptyShopping())
+                      : decode(shoppingDocument, valueOf(target)),
+                  receipt:
+                    receipt === undefined
+                      ? null
+                      : decode(receiptSchema, valueOf(receipt)),
+                  revision: readRevision(revision),
+                });
+              }),
+            ),
+          );
+        },
+      );
+    },
+    async reconcileLegacy(
+      preview: LegacyPreview,
+      choices: Record<string, "V1" | "V2">,
+      source: Pick<Storage, "getItem"> = localStorage,
+    ) {
+      if (preview.raw === null || !preview.receipt)
+        throw new BrowserStorageError("VERIFY_FAILED");
+      const plan = legacyPlan(preview, choices);
+      if (plan.conflicts.length) throw new BrowserStorageError("VERIFY_FAILED");
+      await transaction<void>(
+        db,
+        ["documents"],
+        "readwrite",
+        (tx, done) => {
+          const store = tx.objectStore("documents");
+          received(tx, store.get("migration:basket:v1"), (record) => {
+            if (
+              source.getItem(basketKey) !== preview.raw ||
+              JSON.stringify(decode(receiptSchema, valueOf(record))) !==
+                JSON.stringify(preview.receipt)
+            )
+              throw new BrowserStorageError("VERIFY_FAILED");
+            store.put({ key: "shopping", schemaVersion: 1, value: plan.next });
+            store.put({
+              key: "migration:basket:v1",
+              schemaVersion: 1,
+              value: {
+                schemaVersion: 1,
+                raw: preview.raw,
+                originalRaw:
+                  preview.receipt!.originalRaw ?? preview.receipt!.raw,
+                expected: JSON.stringify(plan.next),
+                verified: false,
+              },
+            });
+            done();
+          });
+        },
+        preview.revision,
+      );
+    },
     requestPersistence: () =>
       navigator.storage?.persist?.() ?? Promise.resolve(false),
     snapshot() {
@@ -430,13 +596,18 @@ export async function openBrowserRepository(name?: string) {
         },
       );
     },
-    async migrateBasket(source: Pick<Storage, "getItem"> = localStorage) {
+    async migrateBasket(
+      source: Pick<Storage, "getItem"> = localStorage,
+      expected?: { raw: string; revision: number },
+    ) {
       let raw: string | null;
       try {
         raw = source.getItem(basketKey);
       } catch (error) {
         throw storageError(error);
       }
+      if (expected && raw !== expected.raw)
+        throw new BrowserStorageError("VERIFY_FAILED");
       if (raw === null) return "NO_SOURCE" as const;
       if (raw.length > 128 * 1024) throw new BrowserStorageError("CORRUPTED");
       let legacy;
@@ -448,59 +619,67 @@ export async function openBrowserRepository(name?: string) {
       const result = await transaction<{
         status: "PENDING" | "ALREADY_MIGRATED" | "LEGACY_CHANGED";
         expected?: string;
-      }>(db, ["documents"], "readwrite", (tx, done) => {
-        const store = tx.objectStore("documents");
-        received(tx, store.get("shopping"), (target) =>
-          received(tx, store.get("migration:basket:v1"), (record) => {
-            const current =
-              target === undefined
-                ? emptyShopping()
-                : decode(shoppingDocument, valueOf(target));
-            if (record !== undefined) {
-              const receipt = decode(receiptSchema, valueOf(record));
-              done(
-                receipt.raw !== raw
-                  ? { status: "LEGACY_CHANGED" }
-                  : receipt.verified
-                    ? { status: "ALREADY_MIGRATED" }
-                    : { status: "PENDING", expected: receipt.expected },
-              );
-              return;
-            }
-            const next = shoppingDocument.parse({
-              ...current,
-              recipes: [...current.recipes],
-            });
-            for (const item of legacy.items) {
-              const ref = { kind: "PUBLIC" as const, id: item.recipeId };
-              if (
-                !next.recipes.some(
-                  (i) => recipeKey(i.reference) === recipeKey(ref),
-                )
-              ) {
-                let id = item.recipeId;
-                while (next.recipes.some((i) => i.id === id))
-                  id = crypto.randomUUID();
-                next.recipes.push({
-                  id,
-                  reference: ref,
-                  selectedServings: item.selectedServings,
-                  addedAt: item.addedAt,
-                });
+      }>(
+        db,
+        ["documents"],
+        "readwrite",
+        (tx, done) => {
+          const store = tx.objectStore("documents");
+          received(tx, store.get("shopping"), (target) =>
+            received(tx, store.get("migration:basket:v1"), (record) => {
+              if (source.getItem(basketKey) !== raw)
+                throw new BrowserStorageError("VERIFY_FAILED");
+              const current =
+                target === undefined
+                  ? emptyShopping()
+                  : decode(shoppingDocument, valueOf(target));
+              if (record !== undefined) {
+                const receipt = decode(receiptSchema, valueOf(record));
+                done(
+                  receipt.raw !== raw
+                    ? { status: "LEGACY_CHANGED" }
+                    : receipt.verified
+                      ? { status: "ALREADY_MIGRATED" }
+                      : { status: "PENDING", expected: receipt.expected },
+                );
+                return;
               }
-            }
-            const value = shoppingDocument.parse(next),
-              expected = JSON.stringify(value);
-            store.put({ key: "shopping", schemaVersion: 1, value });
-            store.put({
-              key: "migration:basket:v1",
-              schemaVersion: 1,
-              value: { schemaVersion: 1, raw, expected, verified: false },
-            });
-            done({ status: "PENDING", expected });
-          }),
-        );
-      });
+              const next = shoppingDocument.parse({
+                ...current,
+                recipes: [...current.recipes],
+              });
+              for (const item of legacy.items) {
+                const ref = { kind: "PUBLIC" as const, id: item.recipeId };
+                if (
+                  !next.recipes.some(
+                    (i) => recipeKey(i.reference) === recipeKey(ref),
+                  )
+                ) {
+                  let id = item.recipeId;
+                  while (next.recipes.some((i) => i.id === id))
+                    id = crypto.randomUUID();
+                  next.recipes.push({
+                    id,
+                    reference: ref,
+                    selectedServings: item.selectedServings,
+                    addedAt: item.addedAt,
+                  });
+                }
+              }
+              const value = shoppingDocument.parse(next),
+                expected = JSON.stringify(value);
+              store.put({ key: "shopping", schemaVersion: 1, value });
+              store.put({
+                key: "migration:basket:v1",
+                schemaVersion: 1,
+                value: { schemaVersion: 1, raw, expected, verified: false },
+              });
+              done({ status: "PENDING", expected });
+            }),
+          );
+        },
+        expected?.revision,
+      );
       if (result.status !== "PENDING") return result.status;
       await transaction<void>(db, ["documents"], "readwrite", (tx, done) => {
         const store = tx.objectStore("documents");

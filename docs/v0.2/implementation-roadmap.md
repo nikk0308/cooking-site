@@ -14,12 +14,14 @@ Versioned contracts, browser repositories/Blob ownership, favorites, shopping pe
 
 Routes and owner walkthrough: personal-data-workflows.md. Atomic portability uses conservative conflict rejection; no destructive conflict resolver or import-as-copies is included. Images remain browser-owned. No shopping UI switch, production deployment or production migration is included.
 
-## 6.6 unified shopping
+## 6.6 unified shopping — implemented
 
 - Wire shopping v2 UI with portions, manual products, checked rows and editable quantities using existing calculation contracts.
 - Invoke and verify basket v1 migration before showing the unified list; retain source and handle LEGACY_CHANGED reconciliation explicitly.
 - PUBLIC/LOCAL and same-UUID references coexist, CUSTOM never auto-merges, unavailable recipes stay visible, edits and purchased state survive reload/reordering.
 - Test transaction/storage failure, repeated migration and undo/reset policies without silent data loss.
+
+`/basket` now uses the existing IndexedDB v2 document; public/local details no longer write v1. Previewed migration, explicit LEGACY_CHANGED choices, transaction/revision guards and a persistent guarded undo checkpoint are implemented. See shopping-and-nutrition.md for lifecycle rules, backup compatibility and the disposable owner walkthrough. No production deployment/migration is included.
 
 ## 6.7 catalog and importer
 

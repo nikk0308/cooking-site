@@ -10,6 +10,8 @@ Stores:
 | photos    | id           | v1, recipeId, Blob                                              |
 | documents | key          | v1 envelope containing favorites, shopping or migration receipt |
 
+Phase 6.6 uses the same stores and physical version 2. `shopping:undo` holds one internal before/after shopping checkpoint; it is atomic with clear/source edits and restores only if the current list still equals the saved post-action state. Migration receipts may include `originalRaw` to retain the first v1 source after explicit reconciliation. Neither internal record is part of the portable export. `repo.shopping.view()` reads shopping/revision/checkpoint consistently, without requiring photo assets to render a shopping list. There is no destructive storage upgrade or new localStorage shopping document.
+
 Physical version 1 has recipe/document stores; version 2 adds photos. Upgrades only create missing stores and verify existing key paths. They never delete, rewrite or clear existing records. A failed upgrade aborts atomically; incompatible/future schemas require explicit recovery instead of destructive reset. Existing connections close on versionchange. Blocked upgrades are reported and can be retried after another tab closes.
 
 Recipe and owned photo changes, duplication and deletion are single readwrite transactions. Save requires the complete asset set; the editor reads and passes existing Blobs. An optional expected document prevents stale editor writes. Blob IDs cannot be reassigned between recipes. Local recipes are capped at 500. Read/update rejects corrupted or unsupported records without overwriting them. Favorites/shopping updates serialize through IDB transactions, including across tabs.

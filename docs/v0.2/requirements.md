@@ -13,7 +13,7 @@ Implemented foundation:
 
 Phase 6.4 supplied these contracts and repositories. Phase 6.5 adds personal recipe screens, favorite controls, mixed favorites, bounded public/catalog reads and complete browser export/import. The provider opens IndexedDB after hydration without migrating the old basket or uploading data. See personal-data-workflows.md for acceptance walkthroughs.
 
-Still deferred: unified shopping UI and explicit basket migration activation (6.6), catalog administration/bulk importer (6.7), release deployment (6.8), accounts and remote synchronization. Production stays v0.1; migration 0002 is not applied there by this work.
+Phase 6.6 now implements `/basket` on the existing Shopping v2 repository, public/local recipe additions, manual products, purchased/quantity controls, guarded clear/undo and explicit v1 migration/reconciliation. Still deferred: catalog administration/bulk importer (6.7), release deployment (6.8), accounts and remote synchronization. Production stays v0.1; migration 0002 is not applied there by this work.
 
 Publication remains a data-layer rule: `recipeRepository.resolvePublishedRecipes` filters PUBLISHED; `resolvePublicDocuments` uses only that method. Administrative writes retain session and same-origin checks. No new public mutation endpoint exists.
 

@@ -39,7 +39,9 @@ export function resolveShopping(
   ) => {
     const identity =
       productKey(line.product) +
-      (line.unit.dimension === "CUSTOM" ? `:${source}` : "");
+      (line.unit.dimension === "CUSTOM"
+        ? `:${source}:${JSON.stringify([line.unit.code, line.unit.symbol])}`
+        : "");
     names.set(identity, { name: line.name, product: line.product });
     const key = productKey(line.product),
       seen = dimensions.get(key) ?? new Set<string>();
@@ -78,6 +80,7 @@ export function resolveShopping(
         unit: bucket.unit,
         calculatedQuantity: bucket.quantity.toFixed(),
         quantity: edit?.quantity ?? bucket.quantity.toFixed(),
+        overridden: edit?.quantity !== null && edit?.quantity !== undefined,
         purchased: edit?.purchased ?? false,
         incompatible:
           (dimensions.get(productKey(product.product))?.size ?? 0) > 1,
