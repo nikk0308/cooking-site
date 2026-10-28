@@ -60,6 +60,9 @@ jobs:
         timeout-minutes: 5
       - run: npm run test:e2e
         timeout-minutes: 5
+      - name: Repeat recipe hydration and scaling in fresh browser contexts
+        run: npm run test:e2e -- --grep 'recipe hydration|public catalog' --repeat-each=3
+        timeout-minutes: 5
       - run: docker build --tag recipes:v01 .
         timeout-minutes: 10
       - run: docker build --target maintenance --tag recipes:v01-maintenance .

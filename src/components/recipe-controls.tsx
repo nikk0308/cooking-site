@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { RecipeAggregate } from "@/modules/recipes/repository";
 import { scaleQuantityForServings } from "@/modules/recipes/scaling";
 import {
@@ -11,6 +11,17 @@ import {
   parseBasket,
   basketDocument,
 } from "@/modules/basket/document";
+
+const subscribeToHydration = () => () => {};
+function useHydrated() {
+  // SSR controls must not accept input before React can handle their events.
+  return useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+}
+
 export function Servings({
   value,
   onChange,
@@ -18,12 +29,13 @@ export function Servings({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const hydrated = useHydrated();
   return (
     <div className="servings">
       <button
         type="button"
         aria-label="Уменьшить порции"
-        disabled={value <= 1}
+        disabled={!hydrated || value <= 1}
         onClick={() => onChange(value - 1)}
       >
         −
@@ -35,6 +47,7 @@ export function Servings({
           type="number"
           min="1"
           max="1000"
+          disabled={!hydrated}
           value={value}
           onChange={(e) => {
             const v = Number(e.target.value);
@@ -45,7 +58,7 @@ export function Servings({
       <button
         type="button"
         aria-label="Увеличить порции"
-        disabled={value >= 1000}
+        disabled={!hydrated || value >= 1000}
         onClick={() => onChange(value + 1)}
       >
         +
@@ -54,6 +67,7 @@ export function Servings({
   );
 }
 export function RecipeControls({ recipe }: { recipe: RecipeAggregate }) {
+  const hydrated = useHydrated();
   const [servings, setServings] = useState(recipe.baseServings),
     [message, setMessage] = useState("");
   const n = recipeNutrition(recipe);
@@ -120,7 +134,9 @@ export function RecipeControls({ recipe }: { recipe: RecipeAggregate }) {
           </ul>
         </div>
       ))}
-      <button onClick={add}>В список продуктов</button>
+      <button disabled={!hydrated} onClick={add}>
+        В список продуктов
+      </button>
       <p role="status">{message}</p>
       <h2>КБЖУ на порцию</h2>
       {n.coverage.complete ? (
