@@ -480,6 +480,8 @@ class RetentionTests(unittest.TestCase):
         # Exercise the real Linux entrypoint functions without importing Linux
         # fcntl/boto3 on Windows or ever constructing a production S3 client.
         path = Path(__file__).with_name("culinote_offsite.py")
+        if not path.exists():
+            path = Path(__file__).with_name("offsite.py")  # Installed server name.
         tree = ast.parse(path.read_text(encoding="utf-8"))
         functions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in ("main", "run_gc")]
         module = types.ModuleType("culinote_workflow_fixture")
