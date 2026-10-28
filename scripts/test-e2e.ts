@@ -27,7 +27,7 @@ try {
     throw new Error("Duplicate admin bootstrap was accepted");
   const child = spawn(
     process.execPath,
-    ["node_modules/@playwright/test/cli.js", "test"],
+    ["node_modules/@playwright/test/cli.js", "test", ...process.argv.slice(2)],
     {
       stdio: "inherit",
       env: {
