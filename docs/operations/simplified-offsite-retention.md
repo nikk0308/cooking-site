@@ -1,8 +1,9 @@
 # Culinote simplified offsite retention
 
-Phase 6.3D prepares retention; **remote deletion remains disabled**. No timer or
-CLI mode calls the GC executor. Changing the existing private configuration alone
-does not enable it. No credentials or private age identity belong in this file.
+Phase 6.3D.6 connects GC to the daily upload workflow. Activation requires both
+`private/config.json` with `deletion_enabled: true` and an owner-confirmation
+receipt in `state/retention-activation.json`. No credentials or private age
+identity belong in these sources or the receipt.
 
 ## Policy
 
@@ -36,16 +37,22 @@ Existing monthly markers remain valid. Bootstrap creates missing weekly markers
 in chronological order only after verifying all existing ciphertext objects.
 
 The server entrypoint `/opt/docker-stacks/recipes/backup/offsite/offsite.py`
-imports `offsite_retention.py`. Successful uploads establish period references
-and produce a dry-run plan before recording upload success. Dry-run and upload
-share `state/upload.lock`. Watchdog verifies weekly and monthly references as
-well as the current daily snapshot. Local backup code and all timer schedules
-are unchanged.
+imports `offsite_retention.py`. Successful uploads establish period references,
+persist `last-success.json`, release the upload lock and invoke GC. GC reacquires
+the same lock, verifies current local/upload binding and rebuilds its plan. Failed
+uploads never invoke GC. GC errors are caught and recorded separately so fresh
+encrypted backups continue. Watchdog verifies weekly/monthly references and
+reports GC warnings without falsely declaring the verified backup failed.
+Local backup code and all timer schedules are unchanged.
 
 ## GC safety and activation gate
 
-`execute()` defaults to disabled. It requires a separately approved plan SHA-256
-and explicit enablement. There is deliberately no production invocation yet.
+`execute()` defaults to disabled and supports explicit-plan calls. The automatic
+`cycle()` is gated by config and the owner receipt, then computes and approves a
+fresh plan under the shared lock. The owner authorized future ordinary rotation
+under this fixed policy; each normal daily deletion does not need manual approval.
+`offsite.py gc` repeats the same cycle without creating a new backup. The normal
+daily `offsite.py upload` invokes it only after remote verification and success.
 
 Limited-key access is checked through ListObjectsV2, GetObject and HeadObject in
 the expected bucket and managed prefix. GetBucketPolicy/GetBucketAcl are not
@@ -62,8 +69,12 @@ uploads, missing markers, conflicting references, S3 errors and unresolved uploa
 failure stop the operation.
 
 Obsolete COMPLETE markers are removed before their unreferenced blobs. Before
-every deletion, the inventory must match; before each blob deletion all remaining
-references are re-read. ETag and byte size must match the approved inventory.
+every deletion, the inventory, references and all remaining ciphertext checksums
+are re-read. Retained markers and protected blobs must still be present. The
+logical policy is recomputed from the original verified catalog; the remaining
+inventory allows only already-confirmed deletions. Each operation receives a new
+progress-plan hash binding the current inventory and next key. ETag and byte size
+must match the approved inventory.
 Every delete is individually confirmed; errors stop further deletes. A partial
 failure can leave extra orphan ciphertext, which blocks further planning until
 reviewed. There is no blind orphan cleanup or `sync --delete`.
@@ -73,10 +84,18 @@ writing second host or an operator modifying Spaces concurrently; enabling that
 architecture requires a distributed concurrency design first. The lock does not
 make a sequence of S3 operations transactional.
 
-For future activation: review a fresh production plan and its exact keys/bytes,
-verify the protected point, confirm exclusive writers and permissions, then
-separately authorize the execution entrypoint and scheduling. Do not turn this
-preparation into an unattended deletion command without that review.
+For initial activation, the owner authorized only an empty fresh plan. An initial
+nonempty plan requires separate review. Subsequent normal daily plans are covered
+by the approved policy. A protected fifth point blocks the entire GC with
+`RECOVERY_REVALIDATION_REQUIRED`; no partial cleanup is performed in this case.
+
+`state/gc-status.json` records enabled/status, timestamps, plan hash, retained
+snapshots and planned/deleted counts. Safe `CULINOTE_GC` journal events record
+operation keys, progress-plan hashes and results. Watchdog emits
+`WATCHDOG_WARNING` for blocked/error/stale GC status. It does not connect external
+notifications. A dry-run plan has `dry_run: true`, independent of the active
+configuration. Disable GC by setting only `deletion_enabled` to false; daily
+uploads continue. Investigate interrupted GC before attempting orphan repair.
 
 ## Verification
 
@@ -87,33 +106,33 @@ python -B -m unittest discover -s scripts -p test_offsite_retention.py -v
 Tests use an in-memory S3 implementation; executor deletes only that fixture.
 Production dry-run is the existing `offsite.py retention-dry-run` mode; its output
 is stored in `state/retention-dry-run.json`, including exact keys, byte sizes,
-ETags, protected snapshot and the approval hash. Production deletion was not run.
+ETags, protected snapshot and the approval hash. Controlled activation cycles
+must preserve the original inventory and delete zero objects with an empty plan.
 
 ## Recovery source inventory and activation status
 
-`scripts/culinote_offsite.py` is the exact Phase 6.3D server entrypoint, saved from
-`/opt/docker-stacks/recipes/backup/offsite/offsite.py`. For recovery, install it as
-`offsite.py` beside `scripts/offsite_retention.py` in that server directory. Retain
+`scripts/culinote_offsite.py` is the versioned server entrypoint. For recovery,
+install it at `/opt/docker-stacks/recipes/backup/offsite/offsite.py`
+beside `scripts/offsite_retention.py` in that server directory. Retain
 the executable entrypoint permissions and provision credentials separately; no
 credentials or private identity are included in these sources. The test module
 remains `scripts/test_offsite_retention.py`.
 
 Phase 6.3D.2 corrects the previous administrative API gate. The earlier
 GetBucketPolicy/GetBucketAcl AccessDenied is expected for the limited key and is
-not an object-access failure. Automatic deletion remains **disabled** until the
-owner confirms account access and separately authorizes activation. An idle host
-lock and stable inventory prove only local inactivity, not exclusive ownership
-of the prefix or absolute inability of another key to write.
+not an object-access failure. An idle host lock and stable inventory prove only
+local inactivity, not exclusive ownership of the prefix or absolute inability
+of another key to write.
 
-Before activation, the owner must review DigitalOcean Access Keys, the list of
-account/team users, and all write-capable keys/roles and their consumers,
-including CI, workstations and other hosts. Confirm that no independent writers
-are configured for `culinote/`, or ensure all configured writers participate in
-the same lock. Do not upgrade to a full-access key or paste credential values
-into the review. Then rerun fresh-plan gates; any nonempty deletion list requires
-separate owner approval. The prepared GC still has no production invocation.
+In Phase 6.3D.6 the owner confirmed sole account use, one limited Spaces key
+`culinote-backup-hetzner` scoped to `culinote-backups` with Read/Write/Delete,
+exclusive use by this workflow and no configured independent writers. Preserve
+that confirmation in the activation receipt with bucket, prefix, exact policy,
+`sole_workflow_writer: true`, source commit and UTC timestamp. This is an owner
+attestation, not technical proof that another key could never be created. Changes
+to account/key consumers require a new concurrency review. Do not upgrade keys.
 
-Sources belong to `infra/culinote-retention-activation`, independently of Backend
-v0.2. The PR runs the retention suite on Linux without credentials or network S3
-access, alongside the existing application CI. Merge and GC activation are
-separate stages; neither is implied by publication of the branch and PR.
+Activation sources belong to `infra/culinote-automatic-retention`, independently
+of Backend v0.2. The PR runs the retention suite on Linux without credentials or
+network S3 access, alongside existing application CI. Application runtime, local
+backup code, credentials, private identity and OCI registry are unchanged.
