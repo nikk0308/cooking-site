@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { BrowserDataProvider } from "@/components/browser-data";
 export const metadata: Metadata = {
   title: "Recipes",
   description: "Рецепты, порции и список продуктов",
@@ -22,11 +23,13 @@ export default function RootLayout({
           </Link>
           <nav aria-label="Основная навигация">
             <Link href="/">Рецепты</Link>
+            <Link href="/my-recipes">Мои рецепты</Link>
+            <Link href="/favorites">Избранное</Link>
             <Link href="/basket">Список продуктов</Link>
             <Link href="/admin">Управление</Link>
           </nav>
         </header>
-        {children}
+        <BrowserDataProvider>{children}</BrowserDataProvider>
         <footer>Recipes · Рецепты и список продуктов</footer>
       </body>
     </html>

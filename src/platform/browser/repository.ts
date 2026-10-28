@@ -9,7 +9,10 @@ import {
   uuid,
   type RecipeReference,
 } from "@/modules/recipes/reference";
-import { favoritesDocument } from "@/modules/favorites/document";
+import {
+  favoritesDocument,
+  type FavoritesDocument,
+} from "@/modules/favorites/document";
 import {
   emptyShopping,
   shoppingDocument,
@@ -22,6 +25,7 @@ import {
   received,
   transaction,
   storageError,
+  readRevision,
 } from "./database";
 
 const receiptSchema = z
@@ -60,7 +64,20 @@ function decode<T>(schema: z.ZodType<T>, value: unknown): T {
   }
   return result.data;
 }
-type Photo = { schemaVersion: 1; id: string; recipeId: string; blob: Blob };
+export type StoredPhoto = {
+  schemaVersion: 1;
+  id: string;
+  recipeId: string;
+  blob: Blob;
+};
+type Photo = StoredPhoto;
+export type BrowserSnapshot = {
+  revision: number;
+  recipes: RecipeDocument[];
+  photos: StoredPhoto[];
+  favorites: FavoritesDocument;
+  shopping: ShoppingDocument;
+};
 export type PhotoInput = { id: string; blob: Blob };
 function photo(raw: unknown, owner: string): Photo {
   const record = raw as Photo | undefined;
@@ -78,7 +95,11 @@ function photo(raw: unknown, owner: string): Photo {
   return record;
 }
 export async function openBrowserRepository(name?: string) {
-  const db = await openBrowserDatabase(name);
+  const db = await Promise.resolve()
+    .then(() => openBrowserDatabase(name))
+    .catch((error) => {
+      throw storageError(error);
+    });
   const read = <T>(store: string, key: IDBValidKey) =>
     transaction<T | undefined>(db, [store], "readonly", (tx, done) =>
       received(tx, tx.objectStore(store).get(key), done),
@@ -156,6 +177,123 @@ export async function openBrowserRepository(name?: string) {
     shopping,
     requestPersistence: () =>
       navigator.storage?.persist?.() ?? Promise.resolve(false),
+    snapshot() {
+      return transaction<BrowserSnapshot>(
+        db,
+        ["recipes", "photos", "documents"],
+        "readonly",
+        (tx, done) => {
+          received(tx, tx.objectStore("recipes").getAll(), (rawRecipes) =>
+            received(tx, tx.objectStore("photos").getAll(), (rawPhotos) =>
+              received(
+                tx,
+                tx.objectStore("documents").getAll(),
+                (rawDocs: { key: string; value: unknown }[]) => {
+                  const recipes = rawRecipes.map((r) =>
+                    decode(localRecipeDocument, r),
+                  );
+                  const photos = rawPhotos.map((p) => photo(p, p.recipeId));
+                  if (
+                    recipes.some((r) =>
+                      r.photos.some(
+                        (p) =>
+                          !photos.some(
+                            (a) =>
+                              a.id === p.id && a.recipeId === r.reference.id,
+                          ),
+                      ),
+                    ) ||
+                    photos.some(
+                      (p) =>
+                        !recipes.some(
+                          (r) =>
+                            r.reference.id === p.recipeId &&
+                            r.photos.some((a) => a.id === p.id),
+                        ),
+                    )
+                  )
+                    throw new BrowserStorageError("CORRUPTED");
+                  const find = (key: string) =>
+                    rawDocs.find((d) => d.key === key);
+                  const fav = find("favorites"),
+                    shop = find("shopping");
+                  done({
+                    revision: readRevision(find("revision")),
+                    recipes,
+                    photos,
+                    favorites: fav
+                      ? decode(favoritesDocument, valueOf(fav))
+                      : { schemaVersion: 1, items: [] },
+                    shopping: shop
+                      ? decode(shoppingDocument, valueOf(shop))
+                      : emptyShopping(),
+                  });
+                },
+              ),
+            ),
+          );
+        },
+      );
+    },
+    restore(
+      data: {
+        recipes: RecipeDocument[];
+        photos: StoredPhoto[];
+        favorites: FavoritesDocument;
+        shopping: ShoppingDocument;
+      },
+      revision: number,
+    ) {
+      const recipes = data.recipes.map((r) => localRecipeDocument.parse(r));
+      const photos = data.photos.map((p) => photo(p, p.recipeId));
+      const favorites = favoritesDocument.parse(data.favorites),
+        shopping = shoppingDocument.parse(data.shopping);
+      if (
+        photos.some(
+          (p) =>
+            !recipes.some(
+              (r) =>
+                r.reference.id === p.recipeId &&
+                r.photos.some((a) => a.id === p.id),
+            ),
+        ) ||
+        recipes.some((r) =>
+          r.photos.some(
+            (p) =>
+              !photos.some(
+                (a) => a.id === p.id && a.recipeId === r.reference.id,
+              ),
+          ),
+        )
+      )
+        throw new BrowserStorageError("CORRUPTED");
+      return transaction<void>(
+        db,
+        ["recipes", "photos", "documents"],
+        "readwrite",
+        (tx, done) => {
+          const store = tx.objectStore("recipes");
+          received(tx, store.count(), (count) => {
+            if (count + recipes.length > 500)
+              throw new BrowserStorageError("CAPACITY");
+            for (const r of recipes) store.add(r);
+            for (const p of photos) tx.objectStore("photos").add(p);
+            tx.objectStore("documents").put({
+              key: "favorites",
+              schemaVersion: 1,
+              value: favorites,
+            });
+            tx.objectStore("documents").put({
+              key: "shopping",
+              schemaVersion: 1,
+              value: shopping,
+            });
+            done();
+          });
+        },
+        revision,
+      );
+    },
     async get(id: string) {
       const raw = await read("recipes", uuid.parse(id));
       return raw === undefined ? undefined : decode(localRecipeDocument, raw);
@@ -175,7 +313,11 @@ export async function openBrowserRepository(name?: string) {
         ? null
         : photo(value, uuid.parse(recipeId)).blob;
     },
-    async save(raw: RecipeDocument, assets: readonly PhotoInput[] = []) {
+    async save(
+      raw: RecipeDocument,
+      assets: readonly PhotoInput[] = [],
+      expected?: RecipeDocument,
+    ) {
       const recipe = localRecipeDocument.parse(raw);
       const id = recipe.reference.id;
       if (
@@ -197,6 +339,12 @@ export async function openBrowserRepository(name?: string) {
           received(tx, recipes.get(id), (old) => {
             const previous =
               old === undefined ? undefined : decode(localRecipeDocument, old);
+            if (
+              expected &&
+              JSON.stringify(previous) !==
+                JSON.stringify(localRecipeDocument.parse(expected))
+            )
+              throw new BrowserStorageError("VERIFY_FAILED");
             received(tx, recipes.count(), (count) => {
               if (!previous && count >= 500)
                 throw new BrowserStorageError("CAPACITY");
@@ -260,7 +408,7 @@ export async function openBrowserRepository(name?: string) {
               const copy = localRecipeDocument.parse({
                 ...source,
                 reference: { kind: "LOCAL", id: newId },
-                title: `${source.title.slice(0, 248)} (copy)`,
+                title: `${source.title.slice(0, 248)} (копия)`,
                 photos: source.photos.map((p) => ({
                   ...p,
                   id: crypto.randomUUID(),
