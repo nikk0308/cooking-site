@@ -1,4 +1,4 @@
-import Decimal from "decimal.js";
+import { Decimal } from "@/shared/decimal/decimal";
 import { parseDecimal } from "@/shared/decimal/decimal";
 
 export type BaseRecipeIngredient = Readonly<{

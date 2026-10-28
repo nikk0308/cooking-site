@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-export async function isolatedDatabase() {
+export async function isolatedDatabase(migrationsFolder = "db/migrations") {
   if (!process.env.DATABASE_URL)
     throw new Error("DATABASE_URL is required for isolated database tests");
   const source = new URL(process.env.DATABASE_URL);
@@ -18,7 +18,7 @@ export async function isolatedDatabase() {
     source.pathname = "/" + name;
     pool = new Pool({ connectionString: source.toString() });
     const db = drizzle(pool);
-    await migrate(db, { migrationsFolder: "db/migrations" });
+    await migrate(db, { migrationsFolder });
     return {
       db,
       pool,

@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { ingredients } from "./ingredients";
 import { units } from "./units";
@@ -35,6 +36,12 @@ export const ingredientNutrition = pgTable(
       scale: 6,
     }).notNull(),
     sourceNote: text("source_note"),
+    sourceKind: varchar("source_kind", { length: 24 })
+      .$type<"UNKNOWN" | "MANUAL" | "REFERENCE" | "IMPORT">()
+      .notNull()
+      .default("UNKNOWN"),
+    sourceUrl: text("source_url"),
+    sourceIdentifier: varchar("source_identifier", { length: 256 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -43,6 +50,14 @@ export const ingredientNutrition = pgTable(
       .defaultNow(),
   },
   (table) => [
+    check(
+      "ingredient_nutrition_source_kind",
+      sql`${table.sourceKind} IN ('UNKNOWN', 'MANUAL', 'REFERENCE', 'IMPORT')`,
+    ),
+    check(
+      "ingredient_nutrition_source_url",
+      sql`${table.sourceUrl} IS NULL OR ${table.sourceUrl} ~ '^https?://'`,
+    ),
     index("ingredient_nutrition_basis_unit_idx").on(table.basisUnitId),
     check(
       "ingredient_nutrition_basis_positive",

@@ -1,4 +1,4 @@
-import Decimal from "decimal.js";
+import { parseDecimal, type Decimal } from "@/shared/decimal/decimal";
 import { convertQuantity } from "@/modules/units/conversion";
 import type { UnitDefinition } from "@/modules/units/unit";
 
@@ -35,7 +35,7 @@ export function aggregateBasket(
       buckets.set(`${item.ingredientId}:CUSTOM:${index}`, {
         ingredientId: item.ingredientId,
         dimension: item.unit.dimension,
-        quantity: new Decimal(item.quantity),
+        quantity: parseDecimal(item.quantity),
         unit: item.unit,
       });
       return;
