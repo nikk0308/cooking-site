@@ -577,3 +577,63 @@ test("network and unavailable recipes never disappear or present falsely complet
   await expect(page.getByText("Список пуст.", { exact: false })).toBeVisible();
   expect((await shopping(page)).recipes).toEqual([]);
 });
+
+test("older CUSTOM settings remain visible and exportable without rebinding to an uncertain unit", async ({
+  page,
+}) => {
+  await openList(page);
+  await api(page);
+  const fixture = localRecipe();
+  fixture.ingredients[0].unit = {
+    code: "pinch",
+    name: "щепотка",
+    symbol: "щеп.",
+    dimension: "CUSTOM",
+    factorToBase: null,
+  };
+  const oldKey = `CATALOG:${fixture.ingredients[0].product.id}:LOCAL:${fixture.reference.id}:${fixture.ingredients[0].id}:CUSTOM`;
+  await page.evaluate(
+    async ({ fixture, oldKey }) => {
+      const repo = await window.CulinoteFoundation.openBrowserRepository();
+      await repo.save(fixture);
+      await repo.shopping.update((d) => ({
+        ...d,
+        recipes: [
+          {
+            id: crypto.randomUUID(),
+            reference: fixture.reference,
+            selectedServings: 4,
+            addedAt: "2026-10-28T00:00:00Z",
+          },
+        ],
+        overrides: [{ id: oldKey, purchased: true, quantity: "9" }],
+      }));
+      repo.close();
+    },
+    { fixture, oldKey },
+  );
+  await page.reload();
+  await page
+    .getByText("Сохранённые неприменённые настройки: 1", { exact: true })
+    .click();
+  await expect(
+    page.getByText("куплено; ручное количество: 9", { exact: false }),
+  ).toBeVisible();
+  await expect(product(page, "Творог").getByRole("checkbox")).not.toBeChecked();
+  await expect(
+    product(page, "Творог").getByText("500 щеп.", { exact: true }),
+  ).toBeVisible();
+  expect((await shopping(page)).overrides).toEqual([
+    { id: oldKey, purchased: true, quantity: "9" },
+  ]);
+  await api(page);
+  expect(
+    await page.evaluate(async () => {
+      const repo = await window.CulinoteFoundation.openBrowserRepository();
+      const exported = await window.CulinoteFoundation.exportBrowserData(repo);
+      const json = JSON.parse(await exported.blob.text());
+      repo.close();
+      return json.shopping.overrides;
+    }),
+  ).toEqual([{ id: oldKey, purchased: true, quantity: "9" }]);
+});

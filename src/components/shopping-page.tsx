@@ -183,6 +183,9 @@ export function ShoppingPage() {
       view?.rows.flatMap((r) => (r.recipe ? [r.recipe] : [])) ?? [],
     result = view ? resolveShopping(view.document, available) : null;
   const incomplete = !!result?.unavailable.length;
+  const activeIds = new Set(result?.items.map((item) => item.id));
+  const unmatchedOverrides =
+    view?.document.overrides.filter((o) => !activeIds.has(o.id)) ?? [];
   async function run(action: () => Promise<unknown>, text: string) {
     if (!repo) return;
     pendingOperations.current++;
@@ -544,6 +547,31 @@ export function ShoppingPage() {
                 </li>
               ))}
           </ul>
+          {!!unmatchedOverrides.length && (
+            <details className="panel shopping-orphans">
+              <summary>
+                Сохранённые неприменённые настройки: {unmatchedOverrides.length}
+              </summary>
+              <p>
+                Источник недоступен, позиция исчезла или изменился формат
+                CUSTOM-ключа/единица. Эти настройки сохранены, но не применяются
+                автоматически к другой строке. Проверьте значения и при
+                необходимости задайте их вручную подходящему продукту. Перед
+                удалением источников сохраните backup, если эти настройки нужны.
+              </p>
+              <ul>
+                {unmatchedOverrides.map((o) => (
+                  <li key={o.id}>
+                    <code>{o.id}</code>:{" "}
+                    {o.purchased ? "куплено" : "не куплено"};{" "}
+                    {o.quantity === null
+                      ? "без ручного количества"
+                      : `ручное количество: ${o.quantity}`}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <section className="panel">
             <h2>Очистка и восстановление</h2>
             <p>

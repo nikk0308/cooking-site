@@ -253,6 +253,7 @@ summary {
   padding: 0;
 }
 .shopping-items,
+.shopping-orphans,
 [data-reference],
 [data-manual-id] {
   overflow-wrap: anywhere;
