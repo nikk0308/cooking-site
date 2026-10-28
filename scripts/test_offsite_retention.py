@@ -492,7 +492,7 @@ class RetentionTests(unittest.TestCase):
             "publish": lambda *args: f"culinote/daily/{marker['snapshot']}/COMPLETE",
             "validate_marker": API.validate_marker, "get_marker": API.get_marker, "verify_object": API.verify_object,
             "now": API.now, "atomic": API.atomic, "read_json": API.read_json,
-            "gc_event": API.gc_event, "safe_code": API.safe_code,
+            "gc_event": API.gc_event, "safe_code": API.safe_code, "datetime": dt, "GateError": r.RetentionError,
             "shutil": types.SimpleNamespace(disk_usage=lambda _: types.SimpleNamespace(free=20 * 1024**3)),
             "fcntl": types.SimpleNamespace(flock=lambda *args: None, LOCK_EX=1, LOCK_NB=2)})
         exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), "exec"), module.__dict__)
