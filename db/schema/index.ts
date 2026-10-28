@@ -5,3 +5,5 @@ export * from "./recipes";
 export * from "./units";
 export * from "./admin";
 export * from "./media";
+export * from "./categories";
+export * from "./aliases";
