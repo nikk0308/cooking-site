@@ -499,6 +499,21 @@ test("legacy preview transfers v1 safely and reconciles changed servings explici
   );
   await expect(page.getByLabel(`Порции для ${id}`)).toBeVisible();
   await page.getByLabel(`Порции для ${id}`).selectOption("V1");
+  await oldTab.goto("/basket");
+  await oldTab
+    .locator(`[data-reference="PUBLIC:${id}"]`)
+    .getByRole("spinbutton")
+    .fill("12");
+  await expect(page.getByLabel(`Порции для ${id}`)).toHaveValue("");
+  await expect(
+    page.getByRole("button", { name: "Подтвердить перенос v1" }),
+  ).toBeDisabled();
+  await expect(
+    page
+      .getByLabel(`Порции для ${id}`)
+      .getByRole("option", { name: "Оставить v2: 12", exact: true }),
+  ).toHaveCount(1);
+  await page.getByLabel(`Порции для ${id}`).selectOption("V1");
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Подтвердить перенос v1" }).click();
   await expect(

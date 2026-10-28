@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { browserError, useBrowserData } from "./browser-data";
 import { legacyPlan, type LegacyPreview } from "@/modules/shopping/legacy";
 import { basketKey } from "@/modules/basket/document";
@@ -20,6 +20,7 @@ export function LegacyShopping({
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [refresh, setRefresh] = useState(0);
+  const previewSignature = useRef("");
   useEffect(() => {
     const changed = (event: StorageEvent) => {
       if (event.key === basketKey || event.key === null) {
@@ -42,6 +43,13 @@ export function LegacyShopping({
             (!!p.receipt && (p.receipt.raw !== p.raw || !p.receipt.verified)) ||
             (!p.receipt && plan.rows.length > 0);
           if (active) {
+            const signature = JSON.stringify([p.raw, p.shopping, p.receipt]);
+            if (
+              previewSignature.current &&
+              previewSignature.current !== signature
+            )
+              setChoices({});
+            previewSignature.current = signature;
             setPreview(p);
             setLoadError("");
             pending(needed);
