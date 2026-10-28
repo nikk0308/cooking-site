@@ -483,13 +483,14 @@ class RetentionTests(unittest.TestCase):
         if not path.exists():
             path = Path(__file__).with_name("offsite.py")  # Installed server name.
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        functions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in ("main", "run_gc")]
+        functions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in ("main", "run_gc", "watchdog")]
         module = types.ModuleType("culinote_workflow_fixture")
         marker = self.markers[-1]
         module.__dict__.update({"sys": sys, "retention": r, "STATE": API.STATE, "STAGING": API.STATE,
             "load_config": API.load_config, "client": lambda: self.s3, "latest_local": API.latest_local,
             "probe": lambda _: {}, "prepare": lambda *args: (API.STATE, marker),
             "publish": lambda *args: f"culinote/daily/{marker['snapshot']}/COMPLETE",
+            "validate_marker": API.validate_marker, "get_marker": API.get_marker, "verify_object": API.verify_object,
             "now": API.now, "atomic": API.atomic, "read_json": API.read_json,
             "gc_event": API.gc_event, "safe_code": API.safe_code,
             "shutil": types.SimpleNamespace(disk_usage=lambda _: types.SimpleNamespace(free=20 * 1024**3)),
@@ -518,6 +519,19 @@ class RetentionTests(unittest.TestCase):
                     module.main("upload")
                 cycle.assert_not_called()
         self.assertFalse((API.STATE / "last-success.json").exists())
+
+    def test_watchdog_warns_about_gc_without_failing_healthy_backup(self):
+        self.add("2026-10-01T03:00:00")
+        _, success = self.args()
+        API.atomic(API.STATE / "last-success.json", success)
+        module = self.workflow()
+        for code in ["RECOVERY_REVALIDATION_REQUIRED", "RETENTION_CONCURRENT_CHANGE"]:
+            API.atomic(API.STATE / "gc-status.json", {"status": "BLOCKED", "code": code,
+                       "updated_utc": API.now().isoformat()})
+            module.watchdog()
+            self.assertEqual(API.events[-1]["event"], "WATCHDOG_WARNING")
+            self.assertEqual(API.events[-1]["code"], code)
+        self.assertEqual(self.s3.deletes, [])
 
 
 if __name__ == "__main__":
