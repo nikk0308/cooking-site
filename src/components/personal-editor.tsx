@@ -350,15 +350,8 @@ export function PersonalRecipeEditor({ id }: { id?: string }) {
                       onChange={(e) =>
                         line(i, {
                           name: e.target.value,
-                          ...(x.product.kind === "CATALOG"
-                            ? {
-                                product: {
-                                  kind: "LOCAL",
-                                  id: crypto.randomUUID(),
-                                },
-                                nutrition: null,
-                              }
-                            : {}),
+                          product: { kind: "LOCAL", id: crypto.randomUUID() },
+                          nutrition: null,
                         })
                       }
                     />
@@ -413,7 +406,7 @@ export function PersonalRecipeEditor({ id }: { id?: string }) {
                 <p className="muted">
                   {x.product.kind === "CATALOG"
                     ? "Продукт общего каталога. Изменение названия создаст личную идентичность без выдуманного КБЖУ."
-                    : "Личный продукт: название не используется для автоматического объединения."}
+                    : "Личный продукт: название не используется для автоматического объединения. Изменение названия создаёт другую идентичность без прежнего КБЖУ."}
                 </p>
                 <CatalogPicker
                   select={(r) =>

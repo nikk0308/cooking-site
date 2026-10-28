@@ -12,6 +12,67 @@ const bundle = buildSync({
   target: "es2022",
 }).outputFiles[0].text;
 
+test("quantity edits preserve product identity; replacing a local food cannot inherit nutrition", async ({
+  page,
+}) => {
+  await page.goto("/my-recipes");
+  await page.addScriptTag({ content: bundle });
+  const recipe = localRecipe();
+  const ingredient = recipe.ingredients[0];
+  ingredient.product.kind = "LOCAL";
+  ingredient.nutrition = {
+    basisQuantity: "100",
+    basisUnit: ingredient.unit,
+    caloriesKcal: "100",
+    proteinG: "10",
+    fatG: "5",
+    carbohydratesG: "3",
+    source: { kind: "MANUAL", note: null, url: null, identifier: null },
+  };
+  await page.evaluate(async (recipe) => {
+    const repo = await window.CulinoteFoundation.openBrowserRepository();
+    await repo.save(recipe);
+    repo.close();
+  }, recipe);
+  await page.goto(`/my-recipes/${recipe.reference.id}/edit`);
+  await page.getByLabel("Количество 1", { exact: true }).fill("0.123456");
+  await page.getByRole("button", { name: "Сохранить личный рецепт" }).click();
+  await expect(
+    page.getByRole("heading", { name: recipe.title, exact: true }),
+  ).toBeVisible();
+  await page.addScriptTag({ content: bundle });
+  const saved = await page.evaluate(async (id) => {
+    const repo = await window.CulinoteFoundation.openBrowserRepository();
+    const r = await repo.get(id);
+    repo.close();
+    return r!;
+  }, recipe.reference.id);
+  expect(saved.ingredients[0]).toEqual({ ...ingredient, quantity: "0.123456" });
+  await page.getByRole("link", { name: "Редактировать", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Ингредиент 1", exact: true })
+    .fill("Другой личный продукт");
+  await page.getByRole("button", { name: "Сохранить личный рецепт" }).click();
+  await expect(
+    page.getByRole("heading", { name: recipe.title, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("КБЖУ рассчитано частично", { exact: false }),
+  ).toBeVisible();
+  await page.addScriptTag({ content: bundle });
+  const replaced = await page.evaluate(async (id) => {
+    const repo = await window.CulinoteFoundation.openBrowserRepository();
+    const r = await repo.get(id);
+    repo.close();
+    return r!.ingredients[0];
+  }, recipe.reference.id);
+  expect(replaced.id).toBe(ingredient.id);
+  expect(replaced.product.kind).toBe("LOCAL");
+  expect(replaced.product.id).not.toBe(ingredient.product.id);
+  expect(replaced.quantity).toBe("0.123456");
+  expect(replaced.nutrition).toBeNull();
+});
+
 test("stale import preview and stale editor cannot overwrite another tab", async ({
   page,
   context,

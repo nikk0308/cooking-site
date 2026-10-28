@@ -18,7 +18,7 @@ Base main: `c58b483e23193dea6500dd8094747d02e511eb42`.
 
 Recipes, photos, favorites and shopping v2 live in IndexedDB in this origin/profile. There is no account or synchronization. Server backups do not contain these data. **Deleting site data or a browser profile can destroy personal recipes unless a backup has been exported.** Missing, corrupted, blocked, unsupported future versions and quota errors have explicit states. No error clears storage. Normal editing is explicit save; navigation away from dirty edits asks confirmation, including browser unload/back. Keep the tab open until save or export succeeds.
 
-Product identity uses CATALOG or stable LOCAL UUID, never similar names. Selecting a catalog product retains its identity/nutrition; editing that name converts it to a new LOCAL identity with unknown nutrition. Missing nutrition is not zero. Scaling always starts from original canonical Decimal quantities. Photos preserve their original bytes; sensitive metadata may be present in an exported file.
+Product identity uses CATALOG or stable LOCAL UUID, never similar names. Selecting a catalog product retains its identity/nutrition. Editing any ingredient name creates a new LOCAL product identity with unknown nutrition, avoiding accidental aggregation or inherited nutrients for a different food; the ingredient-line UUID stays stable. Quantity/note/order edits preserve product identity. Missing nutrition is not zero. Scaling always starts from original canonical Decimal quantities. Photos preserve their original bytes; sensitive metadata may be present in an exported file.
 
 ## Export and restore
 
