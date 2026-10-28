@@ -12,66 +12,149 @@ const bundle = buildSync({
   target: "es2022",
 }).outputFiles[0].text;
 
-test("quantity edits preserve product identity; replacing a local food cannot inherit nutrition", async ({
-  page,
-}) => {
-  await page.goto("/my-recipes");
-  await page.addScriptTag({ content: bundle });
-  const recipe = localRecipe();
-  const ingredient = recipe.ingredients[0];
-  ingredient.product.kind = "LOCAL";
-  ingredient.nutrition = {
-    basisQuantity: "100",
-    basisUnit: ingredient.unit,
-    caloriesKcal: "100",
-    proteinG: "10",
-    fatG: "5",
-    carbohydratesG: "3",
-    source: { kind: "MANUAL", note: null, url: null, identifier: null },
-  };
-  await page.evaluate(async (recipe) => {
-    const repo = await window.CulinoteFoundation.openBrowserRepository();
-    await repo.save(recipe);
-    repo.close();
-  }, recipe);
-  await page.goto(`/my-recipes/${recipe.reference.id}/edit`);
-  await page.getByLabel("Количество 1", { exact: true }).fill("0.123456");
-  await page.getByRole("button", { name: "Сохранить личный рецепт" }).click();
-  await expect(
-    page.getByRole("heading", { name: recipe.title, exact: true }),
-  ).toBeVisible();
-  await page.addScriptTag({ content: bundle });
-  const saved = await page.evaluate(async (id) => {
-    const repo = await window.CulinoteFoundation.openBrowserRepository();
-    const r = await repo.get(id);
-    repo.close();
-    return r!;
-  }, recipe.reference.id);
-  expect(saved.ingredients[0]).toEqual({ ...ingredient, quantity: "0.123456" });
-  await page.getByRole("link", { name: "Редактировать", exact: true }).click();
-  await page
-    .getByRole("textbox", { name: "Ингредиент 1", exact: true })
-    .fill("Другой личный продукт");
-  await page.getByRole("button", { name: "Сохранить личный рецепт" }).click();
-  await expect(
-    page.getByRole("heading", { name: recipe.title, exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("КБЖУ рассчитано частично", { exact: false }),
-  ).toBeVisible();
-  await page.addScriptTag({ content: bundle });
-  const replaced = await page.evaluate(async (id) => {
-    const repo = await window.CulinoteFoundation.openBrowserRepository();
-    const r = await repo.get(id);
-    repo.close();
-    return r!.ingredients[0];
-  }, recipe.reference.id);
-  expect(replaced.id).toBe(ingredient.id);
-  expect(replaced.product.kind).toBe("LOCAL");
-  expect(replaced.product.id).not.toBe(ingredient.product.id);
-  expect(replaced.quantity).toBe("0.123456");
-  expect(replaced.nutrition).toBeNull();
-});
+for (const kind of ["LOCAL", "CATALOG"] as const) {
+  test(`${kind} ingredient typing, explicit replacement and persisted identity`, async ({
+    page,
+  }) => {
+    await page.goto("/my-recipes");
+    await page.addScriptTag({ content: bundle });
+    const recipe = localRecipe(),
+      ingredient = recipe.ingredients[0];
+    ingredient.product.kind = kind;
+    ingredient.nutrition = {
+      basisQuantity: "100",
+      basisUnit: ingredient.unit,
+      caloriesKcal: "100",
+      proteinG: "10",
+      fatG: "5",
+      carbohydratesG: "3",
+      source: { kind: "MANUAL", note: null, url: null, identifier: null },
+    };
+    await page.evaluate(async (recipe) => {
+      const repo = await window.CulinoteFoundation.openBrowserRepository();
+      await repo.save(recipe);
+      repo.close();
+    }, recipe);
+    const read = async () => {
+      await page.addScriptTag({ content: bundle });
+      return page.evaluate(async (id) => {
+        const repo = await window.CulinoteFoundation.openBrowserRepository();
+        const r = await repo.get(id);
+        repo.close();
+        return r!;
+      }, recipe.reference.id);
+    };
+    const watchUUIDs = () =>
+      page.evaluate(() => {
+        const original = crypto.randomUUID.bind(crypto);
+        const counter = window as unknown as { productUUIDCalls: number };
+        counter.productUUIDCalls = 0;
+        crypto.randomUUID = (() => {
+          counter.productUUIDCalls++;
+          return original();
+        }) as typeof crypto.randomUUID;
+      });
+    const calls = () =>
+      page.evaluate(
+        () =>
+          (window as unknown as { productUUIDCalls: number }).productUUIDCalls,
+      );
+    const save = async () => {
+      await page
+        .getByRole("button", { name: "Сохранить личный рецепт" })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: recipe.title, exact: true }),
+      ).toBeVisible();
+      await page.reload();
+      await expect(
+        page.getByRole("heading", { name: recipe.title, exact: true }),
+      ).toBeVisible();
+      return read();
+    };
+    await page.goto(`/my-recipes/${recipe.reference.id}/edit`);
+    await page.getByLabel("Количество 1", { exact: true }).fill("0.123456");
+    const quantified = await save();
+    expect(quantified).toEqual({
+      ...recipe,
+      ingredients: [{ ...ingredient, quantity: "0.123456" }],
+    });
+    await page
+      .getByRole("link", { name: "Редактировать", exact: true })
+      .click();
+    const name = page.getByRole("textbox", {
+      name: "Ингредиент 1",
+      exact: true,
+    });
+    await expect(name).toHaveValue(ingredient.name);
+    await watchUUIDs();
+    if (kind === "CATALOG") {
+      await expect(name).toHaveJSProperty("readOnly", true);
+      await page
+        .getByRole("button", {
+          name: "Сделать ингредиент 1 личным",
+          exact: true,
+        })
+        .click();
+      expect(await calls()).toBe(1);
+      await expect(name).toHaveValue(ingredient.name);
+    }
+    await name.fill("");
+    await name.pressSequentially("Личное название продукта");
+    expect(await calls()).toBe(kind === "CATALOG" ? 1 : 0);
+    const renamed = await save(),
+      line = renamed.ingredients[0];
+    expect(renamed).toEqual({
+      ...quantified,
+      ingredients: [
+        {
+          ...quantified.ingredients[0],
+          name: "Личное название продукта",
+          product: line.product,
+          nutrition: kind === "LOCAL" ? ingredient.nutrition : null,
+        },
+      ],
+    });
+    expect(line.product.kind).toBe("LOCAL");
+    if (kind === "LOCAL") expect(line.product).toEqual(ingredient.product);
+    else expect(line.product.id).not.toBe(ingredient.product.id);
+
+    await page
+      .getByRole("link", { name: "Редактировать", exact: true })
+      .click();
+    await expect(name).toHaveValue(line.name);
+    await watchUUIDs();
+    await page
+      .getByRole("button", {
+        name: "Заменить продукт ингредиента 1",
+        exact: true,
+      })
+      .click();
+    expect(await calls()).toBe(1);
+    await expect(name).toHaveValue("");
+    await name.pressSequentially("Совсем другой продукт");
+    expect(await calls()).toBe(1);
+    const replaced = await save(),
+      replacement = replaced.ingredients[0];
+    expect(replaced).toEqual({
+      ...renamed,
+      ingredients: [
+        {
+          ...line,
+          name: "Совсем другой продукт",
+          product: replacement.product,
+          nutrition: null,
+        },
+      ],
+    });
+    expect(replacement.product.kind).toBe("LOCAL");
+    expect(replacement.product.id).not.toBe(line.product.id);
+    expect(replacement.id).toBe(ingredient.id);
+    await expect(
+      page.getByText("КБЖУ рассчитано частично", { exact: false }),
+    ).toBeVisible();
+  });
+}
 
 test("stale import preview and stale editor cannot overwrite another tab", async ({
   page,

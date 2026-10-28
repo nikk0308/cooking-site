@@ -347,13 +347,8 @@ export function PersonalRecipeEditor({ id }: { id?: string }) {
                     <input
                       maxLength={256}
                       value={x.name}
-                      onChange={(e) =>
-                        line(i, {
-                          name: e.target.value,
-                          product: { kind: "LOCAL", id: crypto.randomUUID() },
-                          nutrition: null,
-                        })
-                      }
+                      readOnly={x.product.kind === "CATALOG"}
+                      onChange={(e) => line(i, { name: e.target.value })}
                     />
                   </label>
                   <label>
@@ -405,9 +400,29 @@ export function PersonalRecipeEditor({ id }: { id?: string }) {
                 </div>
                 <p className="muted">
                   {x.product.kind === "CATALOG"
-                    ? "Продукт общего каталога. Изменение названия создаст личную идентичность без выдуманного КБЖУ."
-                    : "Личный продукт: название не используется для автоматического объединения. Изменение названия создаёт другую идентичность без прежнего КБЖУ."}
+                    ? "Продукт общего каталога. Чтобы редактировать название независимо от каталога, сделайте продукт личным; прежнее КБЖУ будет сброшено."
+                    : "Переименование сохраняет личный продукт и его КБЖУ. Для другого продукта нажмите «Заменить другим продуктом»: он получит новую идентичность без прежнего КБЖУ. Названия не используются для объединения."}
                 </p>
+                <button
+                  type="button"
+                  className="secondary"
+                  aria-label={
+                    x.product.kind === "CATALOG"
+                      ? `Сделать ингредиент ${i + 1} личным`
+                      : `Заменить продукт ингредиента ${i + 1}`
+                  }
+                  onClick={() =>
+                    line(i, {
+                      name: x.product.kind === "CATALOG" ? x.name : "",
+                      product: { kind: "LOCAL", id: crypto.randomUUID() },
+                      nutrition: null,
+                    })
+                  }
+                >
+                  {x.product.kind === "CATALOG"
+                    ? "Сделать личным продуктом"
+                    : "Заменить другим продуктом"}
+                </button>
                 <CatalogPicker
                   select={(r) =>
                     line(i, {
