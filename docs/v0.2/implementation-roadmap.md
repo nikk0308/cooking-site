@@ -25,6 +25,8 @@ Routes and owner walkthrough: personal-data-workflows.md. Atomic portability use
 
 ## 6.7 catalog and importer
 
+Implemented: additive 0003, protected category/ingredient/alias/provenance administration, empty nutrition inputs, CSV/JSON preview and atomic bounded-part apply, source mapping/idempotency, stale-plan rejection, bounded admin recipe selection and indexed measured search. See catalog-import-schema.md and catalog-owner-walkthrough.md. No production migration/deployment or catalog population. Multi-part files require separate confirmations/checkpoints; no unattended dataset runner.
+
 - Protected admin category/alias/provenance CRUD with bounded validated requests and authorization tests.
 - CSV/JSON importer: preview/dry-run, source IDs, deterministic duplicate handling, transactional application and no destructive ID reassignment.
 - Measure search at expected scale and provide indexes/pagination. Unknown nutrition remains explicit; no invented density or brand/SKU mixing.

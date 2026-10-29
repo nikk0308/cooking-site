@@ -1,0 +1,14 @@
+{
+  "application": "culinote-catalog",
+  "schemaVersion": 1,
+  "namespace": "synthetic-invalid-only",
+  "records": [
+    {
+      "externalId": "bad-fixture",
+      "name": "",
+      "category": null,
+      "aliases": [],
+      "nutrition": null
+    }
+  ]
+}

@@ -108,8 +108,14 @@ test("admin ingredient, draft, publication, media, editing and logout", async ({
     .getByRole("button", { name: "Добавить ингредиент", exact: true })
     .click();
   await page
+    .getByLabel("Поиск ингредиента", { exact: true })
+    .fill("Тестовый продукт");
+  await page
+    .getByRole("button", { name: "Найти продукт", exact: true })
+    .click();
+  await page
     .getByLabel("Ингредиент", { exact: true })
-    .selectOption({ label: "Тестовый продукт" });
+    .selectOption({ label: "Тестовый продукт (test-product)" });
   await page.getByLabel("Количество", { exact: true }).fill("500");
   await page.getByRole("button", { name: "Добавить шаг", exact: true }).click();
   await page
@@ -133,7 +139,11 @@ test("admin ingredient, draft, publication, media, editing and logout", async ({
     mimeType: "image/png",
     buffer: png,
   });
-  await expect(page.getByRole("status")).toContainText("Фото загружено");
+  await expect(
+    page
+      .getByRole("group", { name: "Обложка", exact: true })
+      .getByRole("status"),
+  ).toContainText("Фото загружено");
   await page.getByLabel("Статус", { exact: true }).selectOption("PUBLISHED");
   await page
     .getByRole("button", { name: "Сохранить рецепт", exact: true })

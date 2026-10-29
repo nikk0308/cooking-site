@@ -33,6 +33,13 @@ export const ingredients = pgTable(
   (table) => [
     uniqueIndex("ingredients_slug_unique").on(table.slug),
     index("ingredients_normalized_name_idx").on(table.normalizedName),
+    index("ingredients_name_trgm_idx").using(
+      "gin",
+      table.normalizedName.op("gin_trgm_ops"),
+    ),
+    index("ingredients_name_prefix_idx").on(
+      table.normalizedName.op("text_pattern_ops"),
+    ),
     index("ingredients_category_idx").on(table.categoryId),
     check("ingredients_name_not_empty", sql`length(trim(${table.name})) > 0`),
     check(

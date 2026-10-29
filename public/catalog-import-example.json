@@ -1,0 +1,16 @@
+{
+  "application": "culinote-catalog",
+  "schemaVersion": 1,
+  "namespace": "synthetic-example-only",
+  "batch": "example-001-not-reference-data",
+  "records": [
+    {
+      "externalId": "fixture-1",
+      "name": "Синтетический тестовый продукт — не справочные данные",
+      "slug": "synthetic-example-not-real-food",
+      "category": { "name": "Тестовая категория", "slug": "synthetic-test" },
+      "aliases": ["Тестовый синоним"],
+      "nutrition": null
+    }
+  ]
+}

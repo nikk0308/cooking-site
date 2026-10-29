@@ -1,4 +1,5 @@
 "use client";
+import { AdminIngredientPicker } from "./admin-ingredient-picker";
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { createSlug } from "@/modules/recipes/slug";
@@ -273,29 +274,18 @@ export function RecipeForm({
         <fieldset key={i}>
           <legend>Ингредиент {i + 1}</legend>
           <div className="form-grid">
-            <label>
-              Ингредиент
-              <select
-                aria-label="Ингредиент"
-                value={line.ingredientId}
-                required
-                onChange={(e) =>
-                  change(
-                    "ingredients",
-                    v.ingredients.map((x, j) =>
-                      j === i ? { ...x, ingredientId: e.target.value } : x,
-                    ),
-                  )
-                }
-              >
-                <option value="">Выберите</option>
-                {ingredients.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AdminIngredientPicker
+              value={line.ingredientId}
+              selected={ingredients}
+              onChange={(id) =>
+                change(
+                  "ingredients",
+                  v.ingredients.map((x, j) =>
+                    j === i ? { ...x, ingredientId: id } : x,
+                  ),
+                )
+              }
+            />
             <label>
               Количество
               <input
@@ -473,155 +463,6 @@ export function RecipeForm({
           {busy ? "Сохраняем…" : "Сохранить рецепт"}
         </button>
       </div>
-      <p role="alert">{error}</p>
-    </form>
-  );
-}
-type IngredientValue = {
-  id?: string;
-  name: string;
-  slug: string;
-  nutrition: null | {
-    basisQuantity: string;
-    basisUnitId: string;
-    caloriesKcal: string;
-    proteinG: string;
-    fatG: string;
-    carbohydratesG: string;
-    sourceNote: string;
-  };
-};
-export function IngredientForm({
-  initial,
-  units,
-}: {
-  initial?: IngredientValue;
-  units: Option[];
-}) {
-  const [v, setV] = useState<IngredientValue>(
-      initial ?? { name: "", slug: "", nutrition: null },
-    ),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
-  const router = useRouter();
-  const labels = {
-    basisQuantity: "Базовое количество",
-    caloriesKcal: "Калории, ккал",
-    proteinG: "Белки, г",
-    fatG: "Жиры, г",
-    carbohydratesG: "Углеводы, г",
-    sourceNote: "Источник данных",
-  };
-  return (
-    <form
-      className="panel"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        try {
-          const data = await send("/api/admin/ingredients", v);
-          setV({ ...v, id: data.id });
-          setError("Сохранено");
-          router.refresh();
-        } catch (e) {
-          setError((e as Error).message);
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <div className="form-grid">
-        <label>
-          Название ингредиента
-          <input
-            aria-label="Название ингредиента"
-            required
-            value={v.name}
-            onChange={(e) => setV({ ...v, name: e.target.value })}
-          />
-        </label>
-        <label>
-          Slug ингредиента
-          <input
-            aria-label="Slug ингредиента"
-            required
-            value={v.slug}
-            onChange={(e) => setV({ ...v, slug: e.target.value })}
-          />
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setV({ ...v, slug: suggest(v.name) })}
-          >
-            Из названия
-          </button>
-        </label>
-      </div>
-      <label>
-        <input
-          style={{ width: "auto" }}
-          type="checkbox"
-          checked={!!v.nutrition}
-          onChange={(e) =>
-            setV({
-              ...v,
-              nutrition: e.target.checked
-                ? {
-                    basisQuantity: "100",
-                    basisUnitId: units[0]?.id ?? "",
-                    caloriesKcal: "0",
-                    proteinG: "0",
-                    fatG: "0",
-                    carbohydratesG: "0",
-                    sourceNote: "",
-                  }
-                : null,
-            })
-          }
-        />{" "}
-        Данные КБЖУ известны
-      </label>
-      {v.nutrition && (
-        <div className="form-grid">
-          <label>
-            Базовая единица
-            <select
-              aria-label="Базовая единица"
-              value={v.nutrition.basisUnitId}
-              onChange={(e) =>
-                setV({
-                  ...v,
-                  nutrition: { ...v.nutrition!, basisUnitId: e.target.value },
-                })
-              }
-            >
-              {units.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {(Object.keys(labels) as Array<keyof typeof labels>).map((key) => (
-            <label key={key}>
-              {labels[key]}
-              <input
-                required={key !== "sourceNote"}
-                value={v.nutrition![key]}
-                onChange={(e) =>
-                  setV({
-                    ...v,
-                    nutrition: { ...v.nutrition!, [key]: e.target.value },
-                  })
-                }
-              />
-            </label>
-          ))}
-        </div>
-      )}
-      <button disabled={busy}>
-        {busy ? "Сохраняем…" : "Сохранить ингредиент"}
-      </button>
       <p role="alert">{error}</p>
     </form>
   );

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  index,
   pgTable,
   text,
   uniqueIndex,
@@ -23,6 +24,13 @@ export const ingredientAliases = pgTable(
     ),
   },
   (t) => [
+    index("ingredient_aliases_name_trgm_idx").using(
+      "gin",
+      t.normalizedName.op("gin_trgm_ops"),
+    ),
+    index("ingredient_aliases_name_prefix_idx").on(
+      t.normalizedName.op("text_pattern_ops"),
+    ),
     uniqueIndex("ingredient_aliases_identity_unique").on(
       t.ingredientId,
       t.normalizedName,

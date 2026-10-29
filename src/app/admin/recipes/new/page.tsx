@@ -5,18 +5,12 @@ import { AdminNav } from "@/components/admin-nav";
 export default async function NewRecipe() {
   await requireAdminSession();
   const repo = recipeRepository();
-  const [ingredients, units] = await Promise.all([
-    repo.listIngredients(),
-    repo.listUnits(),
-  ]);
+  const units = await repo.listUnits();
   return (
     <main>
       <AdminNav />
       <h1>Новый рецепт</h1>
-      <RecipeForm
-        ingredients={ingredients.map((x) => x.ingredient)}
-        units={units}
-      />
+      <RecipeForm ingredients={[]} units={units} />
     </main>
   );
 }

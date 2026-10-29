@@ -1,3 +1,4 @@
+import { catalogRepository } from "@/modules/catalog/repository";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireAdminSession } from "@/modules/admin/session";
@@ -13,12 +14,14 @@ export default async function EditRecipe({
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const repo = recipeRepository();
-  const [r, ingredients, units] = await Promise.all([
+  const [r, units] = await Promise.all([
     repo.findAdminRecipe(id),
-    repo.listIngredients(),
     repo.listUnits(),
   ]);
   if (!r) notFound();
+  const ingredients = await catalogRepository().findByIds([
+    ...new Set(r.ingredients.map((x) => x.line.ingredientId)),
+  ]);
   return (
     <main>
       <AdminNav />

@@ -1,0 +1,2 @@
+schemaVersion,namespace,externalId,name,slug,categorySlug,categoryName,aliases,basisQuantity,basisUnit,caloriesKcal,proteinG,fatG,carbohydratesG,sourceKind,sourceNote,sourceUrl,sourceIdentifier
+1,synthetic-example-only,fixture-1,Синтетический тестовый продукт — не справочные данные,synthetic-example-not-real-food,synthetic-test,Тестовая категория,"[""Тестовый синоним""]",,,,,,,,,,
