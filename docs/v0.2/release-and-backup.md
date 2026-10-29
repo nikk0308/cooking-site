@@ -1,5 +1,11 @@
 # Release and backup compatibility (future release gate)
 
+Phase 6.8A adds a tested versioned adapter without installing it live. The concrete
+[release sequence](release-runbook.md), [v0.2 inventory](backup-v02-inventory.md),
+[recovery evidence](recovery-validation.md) and [rollback plan](rollback-plan.md)
+supersede the earlier high-level preparation notes below. Production changes and
+real owner-assisted offsite recovery still need separate authorization.
+
 Phase 6.4 does not access or migrate production and does not modify backup/GC, services, schedules, credentials or OCI registry. Production remains v0.1. PR review/merge is separate from a release.
 
 Migration 0002 is additive; 0000/0001 SQL and snapshots are immutable. Clean PostgreSQL 18 and v0.1-to-v0.2 upgrades are tested, including recipe/line/step/unit/admin preservation, nutrition defaults and idempotent migration ledger behavior. No existing UUID or FK is replaced. Historical migrations are not a down-migration mechanism.

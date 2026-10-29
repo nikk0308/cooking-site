@@ -37,7 +37,12 @@ export function FavoritesPage() {
       <p>
         Ссылки на публичные и личные рецепты сохраняются только в этом браузере.
       </p>
-      <button className="secondary" disabled={!repo} onClick={notify}>
+      <button
+        {...{ autoComplete: "off" }}
+        className="secondary"
+        disabled={!repo}
+        onClick={notify}
+      >
         Обновить избранное
       </button>
       {error && <p role="alert">{error}</p>}

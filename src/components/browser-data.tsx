@@ -86,15 +86,24 @@ export function BrowserDataProvider({ children }: { children: ReactNode }) {
   }, [retry]);
   useEffect(() => {
     const refresh = () => setRevision((v) => v + 1);
-    if (typeof BroadcastChannel !== "undefined") {
-      channel.current = new BroadcastChannel("culinote-browser-events");
-      channel.current.onmessage = refresh;
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        channel.current = new BroadcastChannel("culinote-browser-events");
+        channel.current.onmessage = refresh;
+      }
+    } catch {
+      channel.current = null;
     }
+    const visible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
     window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", visible);
     return () => {
       channel.current?.close();
       channel.current = null;
       window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", visible);
     };
   }, []);
   return (

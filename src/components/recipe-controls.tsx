@@ -29,6 +29,7 @@ export function Servings({
   return (
     <div className="servings">
       <button
+        {...{ autoComplete: "off" }}
         type="button"
         aria-label="Уменьшить порции"
         disabled={!hydrated || value <= 1}
@@ -39,6 +40,7 @@ export function Servings({
       <label>
         Порции
         <input
+          autoComplete="off"
           aria-label="Порции"
           type="number"
           min="1"
@@ -52,6 +54,7 @@ export function Servings({
         />
       </label>
       <button
+        {...{ autoComplete: "off" }}
         type="button"
         aria-label="Увеличить порции"
         disabled={!hydrated || value >= 1000}

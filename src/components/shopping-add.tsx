@@ -18,6 +18,7 @@ export function ShoppingAdd({
   return (
     <>
       <button
+        {...{ autoComplete: "off" }}
         type="button"
         disabled={!repo || busy}
         onClick={async () => {

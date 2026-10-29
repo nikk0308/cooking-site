@@ -57,6 +57,17 @@ def probe(s3):
  s3.list_objects_v2(Bucket=BUCKET,Prefix="culinote/",MaxKeys=1)
  if not anonymous_denied(ORIGIN+"/?list-type=2&max-keys=1"):raise GateError("REMOTE_BUCKET_LISTING_PUBLIC")
  return {"authentication":"PASS","anonymous_listing":"DENIED"}
+def versioned_local_contract(path,manifest,runtime_sha):
+ policy=os.environ.get("CULINOTE_BACKUP_RELEASE_POLICY")
+ source=os.environ.get("CULINOTE_BACKUP_RELEASE_SOURCE")
+ if not policy and not manifest.get("inventory_version"):return  # Existing v0.1 contract, unchanged.
+ if not policy or not source:raise GateError("VERSIONED_BACKUP_POLICY_REQUIRED")
+ validator=Path(source)/"scripts/backup/cli.ts"
+ runner=Path(source)/"node_modules/tsx/dist/cli.mjs"
+ if not validator.is_file() or not runner.is_file():raise GateError("VERSIONED_BACKUP_VALIDATOR_MISSING")
+ result=subprocess.run(["node",str(runner),str(validator),"--mode","validate","--policy",policy,"--directory",str(path),"--runtime-sha",runtime_sha],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ if result.returncode:raise GateError("VERSIONED_BACKUP_CONTRACT_FAILED")
+
 def latest_local():
  result=subprocess.check_output(["systemctl","show","recipes-backup.service","-p","Result","--value"],text=True).strip()
  if result!="success":raise GateError("LOCAL_BACKUP_SERVICE_NOT_SUCCESSFUL")
@@ -78,6 +89,7 @@ def latest_local():
  if checked!={"recipes.dump","media.tar.gz","manifest.json","database-state.json","media-manifest.json","restore-list.txt"}:raise GateError("LOCAL_CHECKSUM_INVENTORY_INCOMPLETE")
  for name,item in m["files"].items():
   if name not in checked or (p/name).stat().st_size!=item["bytes"] or sha(p/name)!=item["sha256"]:raise GateError("LOCAL_MANIFEST_FILE_MISMATCH")
+ versioned_local_contract(p,m,app["Config"]["Labels"]["org.opencontainers.image.revision"])
  return p,m
 def encrypt(source,target,recipient):
  if target.exists():raise GateError("ENCRYPTED_TARGET_ALREADY_EXISTS")

@@ -17,12 +17,13 @@ jobs:
         with:
           python-version: "3.13"
       - run: python -B -m unittest discover -s scripts -p test_offsite_retention.py -v
+      - run: python -B -m unittest discover -s scripts -p test_backup_gate.py -v
   foundation:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
         env:
           POSTGRES_DB: recipes_test
           POSTGRES_USER: recipes
@@ -40,6 +41,8 @@ jobs:
       DATABASE_QUERY_TIMEOUT_MS: "2000"
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: 24.20.0
@@ -56,18 +59,72 @@ jobs:
       - run: npm run build
         env:
           NODE_ENV: production
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
         timeout-minutes: 5
       - run: npm run test:e2e
+        timeout-minutes: 5
+      - name: Integrated v0.2 user journey and notification fallbacks
+        run: npm run test:e2e -- --config=playwright.release.config.ts
+        timeout-minutes: 5
+      - name: Nine cross-engine browser backup transfers
+        run: npm run test:e2e -- --config=playwright.portability.config.ts
         timeout-minutes: 5
       - name: Repeat recipe hydration and scaling in fresh browser contexts
         run: npm run test:e2e -- --grep 'recipe hydration|public catalog' --repeat-each=3
         timeout-minutes: 5
-      - run: docker build --tag recipes:v01 .
+      - run: docker build --tag recipes:readiness --label org.opencontainers.image.revision=${{ github.sha }} .
         timeout-minutes: 10
-      - run: docker build --target maintenance --tag recipes:v01-maintenance .
+      - run: docker build --target maintenance --tag recipes:readiness-maintenance .
         timeout-minutes: 5
       - run: npm run docker:config
       - name: Production container smoke and cleanup
         run: node scripts/smoke/production-local.mjs
+        timeout-minutes: 5
+      - name: Rebuild deployed v0.1 source for isolated rollback compatibility
+        run: node scripts/backup/build-rollback.mjs
+        timeout-minutes: 10
+      - name: Synthetic full recovery, schema inventory and SHA transition
+        run: npx vitest run tests/recovery --reporter=verbose
+        timeout-minutes: 5
+        env:
+          BACKUP_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+          RECOVERY_RUNTIME_IMAGE: recipes:readiness
+          RECOVERY_ROLLBACK_IMAGE: recipes:rollback-v01
+  cross-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        browser: [firefox, webkit]
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+        env:
+          POSTGRES_DB: recipes_test
+          POSTGRES_USER: recipes
+          POSTGRES_PASSWORD: ci-only-password
+          PGDATA: /var/lib/postgresql/18/docker
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U recipes -d recipes_test" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://recipes:ci-only-password@127.0.0.1:5432/recipes_test
+      DATABASE_QUERY_TIMEOUT_MS: "2000"
+      E2E_BROWSER: ${{ matrix.browser }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - run: npm ci
+        timeout-minutes: 5
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 5
+      - name: Full browser suite with real IndexedDB
+        run: npm run test:e2e
+        timeout-minutes: 10
+      - name: Integrated v0.2 user journey and notification fallbacks
+        run: npm run test:e2e -- --config=playwright.release.config.ts
         timeout-minutes: 5

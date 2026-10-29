@@ -20,6 +20,10 @@ async function login(page: Page) {
     .fill(process.env.E2E_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/recipes$/);
+  await expect(
+    page.getByRole("heading", { name: "Управление рецептами", exact: true }),
+  ).toBeVisible();
+  await page.waitForLoadState("load");
 }
 function envelope(id: string, name = `Synthetic browser ${id}`) {
   return {
@@ -116,7 +120,9 @@ test("imported catalog UUID flows through personal recipe and shopping without p
       .getByRole("status")
       .filter({ hasText: "Добавлено в список продуктов" }),
   ).toHaveText("Добавлено в список продуктов");
-  await page.goto("/basket");
+  await page
+    .getByRole("link", { name: "Список продуктов", exact: true })
+    .click();
   const form = page.getByRole("form", {
     name: "Добавить вручную",
     exact: true,

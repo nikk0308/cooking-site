@@ -256,6 +256,7 @@ export function ShoppingPage() {
       <button
         type="button"
         className="secondary"
+        {...{ autoComplete: "off" }}
         disabled={!repo || pendingBusy}
         onClick={() => {
           setError("");
