@@ -1,0 +1,6 @@
+{
+  "nodeImage": "node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
+  "postgresImage": "postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5",
+  "inspectedV01GuardSha": "4f4807aa90c1bb52d6faaec5121f7c27bdada464",
+  "protectedRecoverySnapshot": "20261027T155249Z-012c8349-1a6e2ddc5110"
+}

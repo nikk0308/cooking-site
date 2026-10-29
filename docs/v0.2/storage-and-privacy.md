@@ -1,5 +1,14 @@
 # Browser storage and privacy
 
+Phase 6.8A browser evidence is recorded in
+[cross-browser report](cross-browser-test-report.md). WebKit private/ephemeral
+sessions reject IndexedDB Blob writes; photo save/import fails explicitly and
+atomically, retaining prior records. Use a normal browser profile for photographs
+and export a backup before clearing site/profile data. Regular WebKit storage is
+tested using fresh disposable persistent profiles, while private-mode rejection
+has a separate executed test. No photo is converted to a persisted blob URL or
+silently omitted to accommodate a restricted browser.
+
 Entry point: `src/platform/browser/foundation.ts`. Call `openBrowserRepository()` explicitly in a browser. Default database: `culinote-browser`, physical version 2; records have independent schemaVersion fields.
 
 Stores:

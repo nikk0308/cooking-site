@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers/playwright";
 
 test("recipe hydration gates interaction until JavaScript is ready", async ({
   page,

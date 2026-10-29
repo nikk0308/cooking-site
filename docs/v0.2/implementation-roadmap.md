@@ -33,6 +33,13 @@ Implemented: additive 0003, protected category/ingredient/alias/provenance admin
 
 ## 6.8 integration, stabilization and release
 
+Phase 6.8A implementation and evidence are in [release readiness](release-readiness.md),
+[cross-browser report](cross-browser-test-report.md), [migration report](migration-upgrade-report.md),
+[inventory contract](backup-v02-inventory.md), and [recovery validation](recovery-validation.md).
+The [release runbook](release-runbook.md) and [rollback matrix](rollback-plan.md)
+require separate production authorization. A green readiness PR does not execute
+Phase 6.8B, change production guards, or certify owner-assisted offsite recovery.
+
 - Complete end-to-end public/local/favorite/shopping/import flows and cross-browser storage checks.
 - Run full CI, migration upgrade/data-preservation and isolated recovery validation against the release inventory.
 - Follow release-and-backup.md with separately authorized production backup/guard updates, migration, deployment and rollback decisions. No phase starts implicitly from completion of 6.4.

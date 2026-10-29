@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers/playwright";
 import sharp from "sharp";
 import { buildSync } from "esbuild";
 const bundle = buildSync({

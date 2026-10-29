@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers/playwright";
 import sharp from "sharp";
 test("serves liveness", async ({ request }) => {
   const r = await request.get("/api/health/live");
@@ -82,6 +82,10 @@ test("admin ingredient, draft, publication, media, editing and logout", async ({
     .fill(process.env.E2E_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/recipes$/);
+  await expect(
+    page.getByRole("heading", { name: "Управление рецептами", exact: true }),
+  ).toBeVisible();
+  await page.waitForLoadState("load");
   const session = (await page.context().cookies()).find(
     (c) => c.name === "recipes-admin",
   );
@@ -101,7 +105,14 @@ test("admin ingredient, draft, publication, media, editing and logout", async ({
     .first()
     .click();
   await expect(page.locator("p[role=alert]").first()).toHaveText("Сохранено");
-  await page.goto("/admin/recipes/new");
+  await expect(
+    page.getByRole("link", { name: "Тестовый продукт", exact: true }),
+  ).toBeVisible();
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Рецепты", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Новый рецепт", exact: true }).click();
   await page.getByLabel("Название", { exact: true }).fill("Тестовый рецепт");
   await page.getByLabel("Slug", { exact: true }).fill("test-recipe");
   await page
@@ -150,7 +161,23 @@ test("admin ingredient, draft, publication, media, editing and logout", async ({
     .click();
   await expect(page.locator("p[role=alert]")).toHaveText("Сохранено");
   const adminUrl = page.url();
-  await page.goto("/recipes/test-recipe");
+  // A visitor read uses its own page; it must not race an admin router.refresh.
+  const visitor = await page.context().newPage();
+  await visitor.goto("/recipes/test-recipe");
+  await expect(
+    visitor.getByRole("heading", { name: "Тестовый рецепт", exact: true }),
+  ).toBeVisible();
+  await visitor.close();
+  await page
+    .getByRole("link", { name: "Рецепты", exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("link")
+    .filter({
+      has: page.getByRole("heading", { name: "Тестовый рецепт", exact: true }),
+    })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Тестовый рецепт", exact: true }),
   ).toBeVisible();

@@ -1,15 +1,28 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, realpathSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  realpathSync,
+  rmSync,
+  readFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-const root = mkdtempSync(path.join(os.tmpdir(), "recipes-v01-smoke-"));
+const root = mkdtempSync(path.join(os.tmpdir(), "culinote-readiness-smoke-"));
+const appImage = process.env.SMOKE_APP_IMAGE ?? "recipes:readiness";
+const maintenanceImage =
+  process.env.SMOKE_MAINTENANCE_IMAGE ?? "recipes:readiness-maintenance";
+const inputs = JSON.parse(
+  readFileSync(new URL("../backup/build-inputs.json", import.meta.url), "utf8"),
+);
+const project = "culinote-smoke-" + randomBytes(4).toString("hex");
 const password = randomBytes(20).toString("hex");
 const env = {
   ...process.env,
-  COMPOSE_PROJECT_NAME: "recipes-v01-smoke",
-  RECIPES_APP_IMAGE: "recipes:v01",
-  POSTGRES_IMAGE: "postgres:18-alpine",
+  COMPOSE_PROJECT_NAME: project,
+  RECIPES_APP_IMAGE: appImage,
+  POSTGRES_IMAGE: inputs.postgresImage,
   DATABASE_URL: "postgresql://recipes:" + password + "@postgres:5432/recipes",
   POSTGRES_PASSWORD: password,
   RECIPES_POSTGRES_DATA_DIR: path.join(root, "postgres"),
@@ -35,7 +48,7 @@ try {
     "type=bind,source=" + env.RECIPES_MEDIA_DIR + ",target=/media",
     "--entrypoint",
     "chown",
-    "recipes:v01",
+    appImage,
     "10001:10001",
     "/media",
   ]);
@@ -45,7 +58,7 @@ try {
       "run",
       "--rm",
       "--network",
-      "recipes-v01-smoke_database",
+      project + "_database",
       "-e",
       "DATABASE_URL=" + env.DATABASE_URL,
       "-e",
@@ -54,7 +67,7 @@ try {
       "type=bind,source=" + env.RECIPES_MEDIA_DIR + ",target=/app/media",
       "--user",
       "10001:10001",
-      "recipes:v01-maintenance",
+      maintenanceImage,
       ...command,
     ]);
   maintenance(["npm", "run", "db:migrate"]);
@@ -83,6 +96,12 @@ try {
     { env, stdio: "inherit" },
   );
   if (cleanup.status !== 0) throw new Error("Compose cleanup failed");
+  const owned = realpathSync(root);
+  if (
+    path.dirname(owned) !== realpathSync(os.tmpdir()) ||
+    !path.basename(owned).startsWith("culinote-readiness-smoke-")
+  )
+    throw new Error("Unsafe cleanup path");
   // PostgreSQL owns its directory on Linux. Remove only this task-created mount contents.
   run([
     "run",
@@ -93,7 +112,7 @@ try {
     "type=bind,source=" + root + ",target=/cleanup",
     "--entrypoint",
     "node",
-    "recipes:v01",
+    appImage,
     "-e",
     "const fs=require('fs');for(const p of ['/cleanup/postgres','/cleanup/media'])fs.rmSync(p,{recursive:true,force:true})",
   ]);
@@ -101,7 +120,7 @@ try {
     parent = realpathSync(os.tmpdir());
   if (
     path.dirname(resolved) !== parent ||
-    !path.basename(resolved).startsWith("recipes-v01-smoke-")
+    !path.basename(resolved).startsWith("culinote-readiness-smoke-")
   )
     throw new Error("Unsafe cleanup path");
   rmSync(resolved, { recursive: true, force: true });

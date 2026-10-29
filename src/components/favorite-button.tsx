@@ -31,6 +31,7 @@ export function FavoriteButton({
   return (
     <div className="favorite-control">
       <button
+        {...{ autoComplete: "off" }}
         type="button"
         className="secondary"
         disabled={!repo || value === null || busy}
