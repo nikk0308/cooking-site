@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers/playwright";
 import sharp from "sharp";
 test("serves liveness", async ({ request }) => {
   const r = await request.get("/api/health/live");

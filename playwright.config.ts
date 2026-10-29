@@ -3,6 +3,7 @@ const browserName = process.env.E2E_BROWSER ?? "chromium";
 if (!["chromium", "firefox", "webkit"].includes(browserName))
   throw new Error("Unsupported E2E_BROWSER");
 export default defineConfig({
+  globalSetup: "./tests/helpers/warm-browser-server.ts",
   expect: { timeout: 15000 },
   testDir: "./tests/e2e",
   timeout: 60_000,

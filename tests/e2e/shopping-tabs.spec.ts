@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers/playwright";
 import { buildSync } from "esbuild";
 import { localRecipe } from "../helpers/v02";
 const bundle = buildSync({

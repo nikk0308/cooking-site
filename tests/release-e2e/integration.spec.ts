@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, browserProfile } from "../helpers/playwright";
 import sharp from "sharp";
 import {
   login,
@@ -109,7 +109,7 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
   });
   expect(saved.ok()).toBe(true);
   const publicId = (await saved.json()).id;
-  const visitor = await browser.newContext(),
+  const visitor = await browserProfile(browser),
     page = await visitor.newPage(),
     writes: string[] = [];
   const track = (p: typeof page) =>
@@ -238,7 +238,7 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
     });
     const file = await exportFile(page);
     expect(JSON.parse(file.toString()).photos).toHaveLength(1);
-    restoredContext = await browser.newContext();
+    restoredContext = await browserProfile(browser);
     const restored = await restoredContext.newPage();
     track(restored);
     await restored.goto(origin + "/my-recipes");

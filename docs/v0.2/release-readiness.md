@@ -15,7 +15,7 @@ committed CI workflow. Never point these commands at production.
 | SQL, importer, clean/upgrade/failure preservation | `npm run test:integration` (25 tests)                                                                   |
 | Immutable history and drift                       | `npm run db:check` and `npm run db:drift-check`                                                         |
 | Browser regression                                | `npm run test:e2e` (49 scenarios per engine)                                                            |
-| Complete feature journey/fallbacks                | `npm run test:e2e -- --config=playwright.release.config.ts` (3 per engine)                              |
+| Complete feature journey/fallbacks                | `npm run test:e2e -- --config=playwright.release.config.ts` (4 per engine)                              |
 | Cross-engine portable backups                     | `npm run test:e2e -- --config=playwright.portability.config.ts` (9 source/target pairs)                 |
 | Hydration/scaling repeats                         | CI repeats both existing scenarios three times                                                          |
 | Schema/data/media restore and guards              | `npx vitest run tests/recovery --reporter=verbose` (explicit isolated PG container and images required) |

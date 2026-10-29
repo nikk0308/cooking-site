@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../helpers/playwright";
 import { csvColumns } from "../../src/modules/catalog/import-format";
 import { buildSync } from "esbuild";
 const browserBundle = buildSync({

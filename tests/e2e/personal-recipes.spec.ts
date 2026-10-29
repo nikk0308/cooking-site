@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "../helpers/playwright";
 import sharp from "sharp";
 import { buildSync } from "esbuild";
 import type * as Foundation from "../../src/platform/browser/foundation";

@@ -7,6 +7,7 @@ import {
   type Browser,
 } from "@playwright/test";
 import sharp from "sharp";
+import { browserProfile } from "../helpers/playwright";
 import {
   bundle,
   snapshot,
@@ -30,8 +31,8 @@ test.afterAll(async () => {
 for (const from of Object.keys(engines) as (keyof typeof engines)[])
   for (const to of Object.keys(engines) as (keyof typeof engines)[])
     test(`portable v1 backup ${from} -> ${to}: complete photo/data, repeat and future rejection`, async () => {
-      const source = await (await engine(from)).newContext(),
-        target = await (await engine(to)).newContext();
+      const source = await browserProfile(await engine(from)),
+        target = await browserProfile(await engine(to));
       try {
         const page = await source.newPage();
         await page.goto("http://127.0.0.1:3100/my-recipes");
