@@ -41,6 +41,11 @@ class DiagnosticPrivacyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="culinote-privacy-check-") as directory:
             root = Path(directory)
             (root / "test-failed.png").write_bytes(privacy.CANARY)
+            # A cold-run DIRECTORY also starts with release-. Upload patterns
+            # must select file extensions, never that directory and its contents.
+            nested = root / "release-sample-1" / "journey"
+            nested.mkdir(parents=True)
+            (nested / "test-failed.png").write_bytes(privacy.CANARY)
             (root / "release-diagnostics.json").write_text('{"lastCompleted":"05","firstIncomplete":"06.01"}')
             self.assertEqual(privacy.check_tree(root), 1)
             (root / "release-unexpected.txt").write_text("synthetic")

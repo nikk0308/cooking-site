@@ -76,7 +76,10 @@ jobs:
         uses: actions/upload-artifact@v7.0.2
         with:
           name: release-diagnostics-chromium
-          path: test-results/**/release-*
+          path: |
+            test-results/**/release-diagnostics.json
+            test-results/**/release-*-trace.zip
+            test-results/**/release-*.png
           retention-days: 1
           if-no-files-found: ignore
       - name: Nine cross-engine browser backup transfers
@@ -157,6 +160,9 @@ jobs:
         uses: actions/upload-artifact@v7.0.2
         with:
           name: release-diagnostics-${{ matrix.browser }}
-          path: test-results/**/release-*
+          path: |
+            test-results/**/release-diagnostics.json
+            test-results/**/release-*-trace.zip
+            test-results/**/release-*.png
           retention-days: 1
           if-no-files-found: ignore

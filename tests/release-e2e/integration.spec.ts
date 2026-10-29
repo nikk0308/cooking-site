@@ -155,12 +155,38 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
         return { png, recipe, publicId };
       },
     );
+    // Catalog/media setup uses the admin page, but subsequent admin operations
+    // use its authenticated request context. Park the now-idle document so its
+    // HMR reconnect cannot broadcast a new webpack SYNC hash to the visitor.
+    // Next 16 reloads existing documents on that changed hash, discarding a
+    // dirty editor mid-click. No application requests or dialogs are mocked.
+    await step(
+      "03.01 Park idle admin document",
+      () => admin.goto("about:blank"),
+      15000,
+    );
     const page = await step("04 Public browsing / scaling", async () => {
-      visitor = await browserProfile(browser);
-      await diagnostics.anonymousContext("visitor", visitor);
-      const page = await visitor.newPage();
+      visitor = await step(
+        "04.01 Create visitor profile",
+        () => browserProfile(browser),
+        15000,
+      );
+      await step(
+        "04.02 Start anonymous diagnostics",
+        () => diagnostics.anonymousContext("visitor", visitor!),
+        15000,
+      );
+      const page = await step(
+        "04.03 Open visitor page",
+        () => visitor!.newPage(),
+        15000,
+      );
       track("visitor", page);
-      await page.goto(`${origin}/recipes/${recipe.slug}`);
+      await step(
+        "04.04 Browse public recipe",
+        () => page.goto(`${origin}/recipes/${recipe.slug}`),
+        15000,
+      );
       await expect(
         page.getByRole("img", { name: recipe.title, exact: true }),
       ).toBeVisible();
