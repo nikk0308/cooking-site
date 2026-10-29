@@ -18,6 +18,7 @@ jobs:
           python-version: "3.13"
       - run: python -B -m unittest discover -s scripts -p test_offsite_retention.py -v
       - run: python -B -m unittest discover -s scripts -p test_backup_gate.py -v
+      - run: python -B -m unittest discover -s scripts -p test_release_diagnostics.py -v
   foundation:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -66,8 +67,12 @@ jobs:
       - name: Integrated v0.2 user journey and notification fallbacks
         run: npm run test:e2e -- --config=playwright.release.config.ts
         timeout-minutes: 5
-      - name: Retain safe synthetic release failure diagnostics
+      - name: Validate synthetic diagnostic privacy
+        id: diagnostic-privacy
         if: failure()
+        run: python scripts/ci/check-release-diagnostics.py test-results
+      - name: Retain safe synthetic release failure diagnostics
+        if: failure() && steps.diagnostic-privacy.outcome == 'success'
         uses: actions/upload-artifact@v7.0.2
         with:
           name: release-diagnostics-chromium
@@ -143,8 +148,12 @@ jobs:
             npm run test:e2e -- --config=playwright.release.config.ts --grep 'admin/catalog/public/private/favorites/shopping/photo backup restore integrate without private writes' --output "test-results/release-sample-$sample"
           done
         timeout-minutes: 5
-      - name: Retain safe synthetic release failure diagnostics
+      - name: Validate synthetic diagnostic privacy
+        id: diagnostic-privacy
         if: failure()
+        run: python scripts/ci/check-release-diagnostics.py test-results
+      - name: Retain safe synthetic release failure diagnostics
+        if: failure() && steps.diagnostic-privacy.outcome == 'success'
         uses: actions/upload-artifact@v7.0.2
         with:
           name: release-diagnostics-${{ matrix.browser }}

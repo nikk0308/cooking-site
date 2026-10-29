@@ -7,6 +7,7 @@ export function releaseDiagnostics(info: TestInfo) {
   const contexts: { label: string; context: BrowserContext }[] = [];
   const pages: { label: string; page: Page }[] = [];
   const files: string[] = [];
+  const cleanupFailures: string[] = [];
   let lastCompleted = "none",
     current = "none",
     firstIncomplete: string | null = null;
@@ -27,6 +28,7 @@ export function releaseDiagnostics(info: TestInfo) {
           lastCompleted,
           current,
           firstIncomplete,
+          cleanupFailures,
           events,
           privacy:
             "No headers, bodies, credentialed traces or real profiles recorded",
@@ -87,17 +89,22 @@ export function releaseDiagnostics(info: TestInfo) {
       });
       contexts.push({ label, context });
     },
-    async step<T>(name: string, action: () => Promise<T>): Promise<T> {
+    async step<T>(
+      name: string,
+      action: () => Promise<T>,
+      timeout?: number,
+    ): Promise<T> {
       current = name;
       await save();
       console.log(`[release-step] BEGIN ${name}`);
       try {
-        const result = await test.step(name, action);
+        const result = await test.step(name, action, { timeout });
         if (!name.startsWith("13")) lastCompleted = name;
         console.log(`[release-step] PASS ${name}`);
         return result;
       } catch (error) {
-        firstIncomplete ??= name;
+        if (name.startsWith("13")) cleanupFailures.push(name);
+        else firstIncomplete ??= name;
         console.log(`[release-step] FAIL ${name}`);
         throw error;
       } finally {

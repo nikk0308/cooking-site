@@ -188,65 +188,159 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
     await step(
       "06 Personal recipe / photograph / local additions",
       async () => {
-        await page
-          .getByRole("link", { name: "Мои рецепты", exact: true })
-          .click();
-        await page
-          .getByRole("link", { name: "Создать рецепт", exact: true })
-          .click();
-        await page
-          .getByLabel("Название", { exact: true })
-          .fill("PRIVATE_RELEASE_LOCAL");
-        await page.getByLabel("Количество порций", { exact: true }).fill("2");
-        await page
-          .getByRole("button", { name: "Добавить ингредиент", exact: true })
-          .click();
-        await page
-          .getByText("Выбрать продукт из общего каталога", { exact: true })
-          .click();
-        await page.getByLabel("Запрос каталога", { exact: true }).fill(alias);
-        await page
-          .getByRole("button", { name: "Найти в каталоге", exact: true })
-          .click();
-        await page
-          .getByRole("button", { name: `Выбрать ${productName}`, exact: true })
-          .click();
-        await page.getByLabel("Количество 1", { exact: true }).fill("100");
-        await page
-          .getByRole("button", { name: "Добавить шаг", exact: true })
-          .click();
-        await page
-          .getByLabel("Шаг 1", { exact: true })
-          .fill("PRIVATE_RELEASE_STEP");
-        await page.getByLabel("Добавить фотографии").setInputFiles({
-          name: "synthetic.png",
-          mimeType: "image/png",
-          buffer: png,
-        });
-        await page
-          .getByLabel("Описание фото 1")
-          .fill("Синтетическая личная фотография");
-        await page
-          .getByRole("button", { name: "Сохранить личный рецепт", exact: true })
-          .click();
-        await expect(
-          page.getByRole("heading", {
-            name: "PRIVATE_RELEASE_LOCAL",
-            exact: true,
-          }),
-        ).toBeVisible();
-        await page
-          .getByRole("button", {
-            name: "В избранное: PRIVATE_RELEASE_LOCAL",
-            exact: true,
-          })
-          .click();
-        await page
-          .getByRole("button", { name: "В список продуктов", exact: true })
-          .click();
-        await expect(
-          page.getByRole("status").filter({ hasText: "Добавлено" }),
-        ).toContainText("Добавлено");
+        await step(
+          "06.01 Navigate to My Recipes",
+          async () => {
+            await page
+              .getByRole("link", { name: "Мои рецепты", exact: true })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.02 Open creation form",
+          async () => {
+            await page
+              .getByRole("link", { name: "Создать рецепт", exact: true })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.03 Fill name and servings",
+          async () => {
+            await page
+              .getByLabel("Название", { exact: true })
+              .fill("PRIVATE_RELEASE_LOCAL");
+            await page
+              .getByLabel("Количество порций", { exact: true })
+              .fill("2");
+          },
+          15000,
+        );
+        await step(
+          "06.04 Add ingredient",
+          async () => {
+            await page
+              .getByRole("button", { name: "Добавить ингредиент", exact: true })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.05 Open catalog picker",
+          async () => {
+            await page
+              .getByText("Выбрать продукт из общего каталога", { exact: true })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.06 Search catalog",
+          async () => {
+            await page
+              .getByLabel("Запрос каталога", { exact: true })
+              .fill(alias);
+            await page
+              .getByRole("button", { name: "Найти в каталоге", exact: true })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.07 Select catalog ingredient",
+          async () => {
+            await page
+              .getByRole("button", {
+                name: `Выбрать ${productName}`,
+                exact: true,
+              })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.08 Fill quantity and steps",
+          async () => {
+            await page.getByLabel("Количество 1", { exact: true }).fill("100");
+            await page
+              .getByRole("button", { name: "Добавить шаг", exact: true })
+              .click();
+            await page
+              .getByLabel("Шаг 1", { exact: true })
+              .fill("PRIVATE_RELEASE_STEP");
+          },
+          15000,
+        );
+        await step(
+          "06.09 Set PNG input",
+          async () => {
+            await page.getByLabel("Добавить фотографии").setInputFiles({
+              name: "synthetic.png",
+              mimeType: "image/png",
+              buffer: png,
+            });
+          },
+          15000,
+        );
+        await step(
+          "06.10 Fill photo description",
+          async () => {
+            await page
+              .getByLabel("Описание фото 1")
+              .fill("Синтетическая личная фотография");
+          },
+          15000,
+        );
+        await step(
+          "06.11 Save local recipe",
+          async () => {
+            await page
+              .getByRole("button", {
+                name: "Сохранить личный рецепт",
+                exact: true,
+              })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.12 Wait for personal detail",
+          async () => {
+            await expect(
+              page.getByRole("heading", {
+                name: "PRIVATE_RELEASE_LOCAL",
+                exact: true,
+              }),
+            ).toBeVisible();
+          },
+          15000,
+        );
+        await step(
+          "06.13 Add local favorite",
+          async () => {
+            await page
+              .getByRole("button", {
+                name: "В избранное: PRIVATE_RELEASE_LOCAL",
+                exact: true,
+              })
+              .click();
+          },
+          15000,
+        );
+        await step(
+          "06.14 Add local shopping reference",
+          async () => {
+            await page
+              .getByRole("button", { name: "В список продуктов", exact: true })
+              .click();
+            await expect(
+              page.getByRole("status").filter({ hasText: "Добавлено" }),
+            ).toContainText("Добавлено");
+          },
+          15000,
+        );
       },
     );
     const before = await step(
