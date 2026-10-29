@@ -66,7 +66,10 @@ test("imported catalog UUID flows through personal recipe and shopping without p
   page,
 }) => {
   await login(page);
-  await page.goto("/admin/ingredients/import");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Импорт каталога", exact: true })
+    .click();
   await upload(page, envelope("personal-shopping"));
   await apply(page);
   const item = (
@@ -170,7 +173,10 @@ test("category and ingredient CRUD preserve legitimate nutrition and aliases; bo
   page,
 }) => {
   await login(page);
-  await page.goto("/admin/categories");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Категории", exact: true })
+    .click();
   await page
     .getByLabel("Название категории", { exact: true })
     .fill("Браузерная тестовая категория");
@@ -183,7 +189,10 @@ test("category and ingredient CRUD preserve legitimate nutrition and aliases; bo
   await expect(page.locator("main p[role=alert]")).toContainText(
     "Категория сохранена",
   );
-  await page.goto("/admin/ingredients");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Ингредиенты", exact: true })
+    .click();
   await page
     .getByLabel("Название ингредиента", { exact: true })
     .fill("Браузерный тестовый продукт");
@@ -240,14 +249,26 @@ test("category and ingredient CRUD preserve legitimate nutrition and aliases; bo
   await page
     .getByRole("button", { name: "Сохранить ингредиент", exact: true })
     .click();
-  await page.reload();
+  await expect(page.locator("main p[role=alert]")).toHaveText("Сохранено");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Ингредиенты", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Браузерный тестовый продукт", exact: true })
+    .click();
+  await expect(page.getByLabel("Категория", { exact: true })).toHaveValue("");
   await expect(page.getByLabel("Источник данных", { exact: true })).toHaveValue(
     "Synthetic browser fixture only",
   );
   await expect(page.getByLabel("Тип источника", { exact: true })).toHaveValue(
     "MANUAL",
   );
-  await page.goto("/admin/recipes/new");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Рецепты", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Новый рецепт", exact: true }).click();
   await page
     .getByRole("button", { name: "Добавить ингредиент", exact: true })
     .click();
@@ -311,7 +332,10 @@ test("JSON preview, atomic apply, idempotent repeat, changed data, stale preview
   page,
 }) => {
   await login(page);
-  await page.goto("/admin/ingredients/import");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Импорт каталога", exact: true })
+    .click();
   const data = envelope("json-cycle");
   await upload(page, data);
   await expect(page.getByRole("status")).toContainText("Каталог не изменён");
@@ -368,7 +392,10 @@ test("UTF8 CSV, conflicting manual mapping, malformed input, request failure and
   page,
 }) => {
   await login(page);
-  await page.goto("/admin/ingredients/import");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Импорт каталога", exact: true })
+    .click();
   const csv =
     csvColumns.join(",") +
     '\r\n1,synthetic-browser-csv,csv-one,"Тестовый, продукт",browser-csv-one,,,"[""CSV alias""]",,,,,,,,,,\r\n';
@@ -472,7 +499,10 @@ test("admin catalog mutations require session and origin; mobile import keyboard
   }
   await login(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/admin/ingredients/import");
+  await page
+    .locator("main")
+    .getByRole("link", { name: "Импорт каталога", exact: true })
+    .click();
   await upload(page, envelope("mobile-browser"));
   await expect(
     page.getByRole("button", { name: "Подтвердить импорт", exact: true }),

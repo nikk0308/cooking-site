@@ -45,6 +45,13 @@ it("current runtime and exact v0.1 source rebuild start on restored v0.2; applic
       "/app/media",
     ]);
   try {
+    source.options.runtime.image = await run("docker", [
+      "image",
+      "inspect",
+      "--format",
+      "{{.Id}}",
+      current,
+    ]);
     await captureBackup(source.options);
     await restoreBackup({
       pool: target.pool,
@@ -206,6 +213,32 @@ it("current runtime and exact v0.1 source rebuild start on restored v0.2; applic
               )
             ).rows[0].n,
           ).toBe(1);
+          const bridgePolicy = {
+            ...source.policy,
+            rules: [
+              ...source.policy.rules,
+              {
+                runtimeSha: sha,
+                schemaHash: before.schemaHash,
+                inventoryVersion: "v0.2" as const,
+              },
+            ],
+          };
+          const rollbackBackup = await captureBackup({
+            ...source.options,
+            pool: target.pool,
+            database: new URL(target.url).pathname.slice(1),
+            mediaRoot: media,
+            destination: path.join(source.root, "rollback-runtime-backup"),
+            runtime: await inspectRuntime(name),
+            policy: bridgePolicy,
+          });
+          expect(rollbackBackup.manifest.source_sha).toBe(sha);
+          expect(rollbackBackup.manifest.inventory_version).toBe("v0.2");
+          expect(rollbackBackup.state.schema.tables).toHaveLength(14);
+          expect(bridgePolicy.protectedRecoverySnapshot).toBe(
+            source.policy.protectedRecoverySnapshot,
+          );
         }
         expect((await state(target.pool)).schemaHash).toBe(before.schemaHash);
         console.log(
