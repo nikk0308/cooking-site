@@ -22,6 +22,28 @@ it("current runtime and exact v0.1 source rebuild start on restored v0.2; applic
   const source = await fixture(),
     target = await isolatedDatabase(null);
   const media = path.join(source.root, "application-media");
+  let mediaOwnedByRuntime = false;
+  const mediaOwner = async (owner: string) =>
+    run("docker", [
+      "run",
+      "--rm",
+      "--label",
+      "com.culinote.task=p68",
+      "--read-only",
+      "--user",
+      "0",
+      "--cap-drop",
+      "ALL",
+      "--cap-add",
+      "CHOWN",
+      "--mount",
+      `type=bind,source=${media},target=/app/media`,
+      "--entrypoint",
+      "chown",
+      current,
+      owner,
+      "/app/media",
+    ]);
   try {
     await captureBackup(source.options);
     await restoreBackup({
@@ -39,6 +61,11 @@ it("current runtime and exact v0.1 source rebuild start on restored v0.2; applic
     await chmod(media, 0o755);
     for (const name of await readdir(media))
       await chmod(path.join(media, name), 0o644);
+    // Production permits writes only on its explicit media/cache/tmp mounts.
+    // Readiness intentionally writes/removes a media probe. Keep rootfs read-only
+    // but assign this synthetic directory to the actual runtime UID, not 0777.
+    await mediaOwner("10001:10001");
+    mediaOwnedByRuntime = true;
     for (const [image, sha] of [
       [current, testSha],
       [previous, inputs.inspectedV01GuardSha],
@@ -64,7 +91,7 @@ it("current runtime and exact v0.1 source rebuild start on restored v0.2; applic
           "--tmpfs",
           "/app/.next/cache:rw,nosuid,size=64m,uid=10001,gid=10001",
           "--mount",
-          `type=bind,source=${media},target=/app/media,readonly`,
+          `type=bind,source=${media},target=/app/media`,
           "--env",
           `DATABASE_URL=${target.url}`,
           "--env",
@@ -189,6 +216,8 @@ it("current runtime and exact v0.1 source rebuild start on restored v0.2; applic
       }
     }
   } finally {
+    if (mediaOwnedByRuntime)
+      await mediaOwner(`${process.getuid!()}:${process.getgid!()}`);
     await target.cleanup();
     await source.cleanup();
   }

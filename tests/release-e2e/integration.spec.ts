@@ -109,6 +109,11 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
   });
   expect(saved.ok()).toBe(true);
   const publicId = (await saved.json()).id;
+  // Next dev compiles a newly published dynamic URL on first access. Finish
+  // that request before any visitor page subscribes to HMR reload events.
+  const published = await admin.request.get(`/recipes/${recipe.slug}`);
+  expect(published.status()).toBe(200);
+  await published.body();
   const visitor = await browserProfile(browser),
     page = await visitor.newPage(),
     writes: string[] = [];
@@ -141,7 +146,10 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
     await expect(
       page.getByRole("status").filter({ hasText: "Добавлено" }),
     ).toContainText("Добавлено");
-    await page.goto(`${origin}/my-recipes/new`);
+    await page.getByRole("link", { name: "Мои рецепты", exact: true }).click();
+    await page
+      .getByRole("link", { name: "Создать рецепт", exact: true })
+      .click();
     await page
       .getByLabel("Название", { exact: true })
       .fill("PRIVATE_RELEASE_LOCAL");
@@ -192,7 +200,9 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
     await expect(
       page.getByRole("status").filter({ hasText: "Добавлено" }),
     ).toContainText("Добавлено");
-    await page.goto(`${origin}/basket`);
+    await page
+      .getByRole("link", { name: "Список продуктов", exact: true })
+      .click();
     const item = page.locator("li[data-shopping-id]").filter({
       has: page.getByRole("checkbox", {
         name: `Куплено: ${productName}`,
@@ -257,7 +267,9 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
           .evaluate((img) => (img as HTMLImageElement).naturalWidth),
       )
       .toBe(16);
-    await restored.goto(origin + "/my-recipes");
+    await restored
+      .getByRole("link", { name: "Мои рецепты", exact: true })
+      .click();
     const corrupt = { ...JSON.parse(file.toString()), schemaVersion: 99 };
     await expect(
       restored.getByLabel("Восстановить из backup JSON", { exact: true }),
@@ -342,7 +354,9 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
         (await admin.request.get(`/recipes/${recipe.slug}`)).status(),
       ).toBe(404);
     }
-    await restored.goto(origin + "/favorites");
+    await restored
+      .getByRole("link", { name: "Избранное", exact: true })
+      .click();
     await expect(
       restored.getByText("Публичный рецепт недоступен", { exact: true }),
     ).toBeVisible();
@@ -360,7 +374,9 @@ test("admin/catalog/public/private/favorites/shopping/photo backup restore integ
         exact: true,
       }),
     ).toBeVisible();
-    await restored.goto(origin + "/basket");
+    await restored
+      .getByRole("link", { name: "Список продуктов", exact: true })
+      .click();
     expect((await snapshot(restored)).shopping.recipes).toHaveLength(2);
     expect(writes).toEqual([]);
   } finally {
