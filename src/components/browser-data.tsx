@@ -12,6 +12,7 @@ import { openBrowserRepository } from "@/platform/browser/repository";
 import { BrowserStorageError } from "@/platform/browser/database";
 import { PortabilityError } from "@/platform/browser/portability";
 import { PhotoError } from "@/platform/browser/images";
+import { ShoppingError } from "@/modules/shopping/operations";
 type Repo = Awaited<ReturnType<typeof openBrowserRepository>>;
 type State = {
   repo: Repo | null;
@@ -27,7 +28,11 @@ const Context = createContext<State>({
 });
 export const useBrowserData = () => useContext(Context);
 export function browserError(error: unknown): string {
-  if (error instanceof PortabilityError || error instanceof PhotoError)
+  if (
+    error instanceof PortabilityError ||
+    error instanceof PhotoError ||
+    error instanceof ShoppingError
+  )
     return error.message;
   if (error instanceof BrowserStorageError)
     return {
@@ -44,7 +49,7 @@ export function browserError(error: unknown): string {
       BLOCKED:
         "Обновление хранилища заблокировано другой вкладкой. Закройте её и повторите без очистки данных.",
       VERIFY_FAILED:
-        "Данные изменились в другой вкладке. Повторите предпросмотр импорта или сохраните текст правок и перечитайте рецепт; ничего не перезаписано.",
+        "Данные изменились в другой вкладке. Обновите список или предпросмотр; в редакторе сохраните текст правок и перечитайте рецепт. Ничего не перезаписано.",
       CAPACITY:
         "Достигнут лимит 500 личных рецептов. Сначала сохраните backup; ничего не удалено автоматически.",
     }[error.code];

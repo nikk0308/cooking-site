@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- browser-owned Blob URLs cannot use server image optimization */
 import Link from "next/link";
+import { ShoppingAdd } from "./shopping-add";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browserError, useBrowserData } from "./browser-data";
@@ -363,6 +364,7 @@ export function PersonalRecipeDetail({ id }: { id: string }) {
       </div>
       <h2>Ингредиенты</h2>
       <Servings value={servings} onChange={setServings} />
+      <ShoppingAdd reference={recipe.reference} servings={servings} />
       {groups.map((g) => (
         <section key={g}>
           {g && <h3>{g}</h3>}

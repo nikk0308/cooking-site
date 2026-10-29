@@ -10,7 +10,7 @@ Base main: `c58b483e23193dea6500dd8094747d02e511eb42`.
 - `/my-recipes/new`, `/my-recipes/[id]/edit`: practical editor with stable ingredient/step IDs, order controls, groups, notes, exact quantity strings, units and full Blob asset preservation.
 - `/my-recipes/[id]`: photos, canonical servings scaling, explicit partial nutrition and local actions.
 - `/favorites`: mixed PUBLIC/LOCAL references; inaccessible recipes stay listed until explicitly removed. Temporary public resolution failure differs from confirmed unavailability.
-- `/basket`: unchanged v0.1 interface and storage behavior.
+- `/basket`: Phase 6.6 unified Shopping v2 UI. Public/local detail actions use the selected portions and upsert a namespaced reference. Old v1 writes stop; transfer is explicit and preserves the source. See shopping-and-nutrition.md for migration, reconciliation, purchased/override and undo workflows.
 
 `GET /api/recipes/resolve?id=UUID` resolves 1–100 IDs through published-only repository methods. DRAFT/ARCHIVED are never returned. `GET /api/catalog?query=...` accepts an explicit 1–100-character search and returns at most ten catalog products with unit/provenance snapshots. The editor sends only the separate search field on button press, never personal ingredient/recipe text automatically. Both endpoints are read-only; no public catalog writes were introduced.
 
@@ -40,4 +40,4 @@ Use a separate temporary browser profile and a local PostgreSQL test database. S
 
 ## Remaining scope
 
-Phase 6.6: shopping v2 interface, explicit verified v1 migration/reconciliation, purchased state and manual quantity controls. Phase 6.7: protected catalog administration and bulk importer. Phase 6.8: cross-browser stabilization and separately authorized release/migration/rollback. No phase starts automatically. Streaming export, import-as-copies, cross-device sync and accounts are not implemented.
+Phase 6.6 now implements shopping v2, verified v1 migration/reconciliation, purchased state, manual products and quantity overrides. Phase 6.7 remains protected catalog administration and bulk importer. Phase 6.8 remains cross-browser stabilization and separately authorized release/migration/rollback. No phase starts automatically. Streaming export, import-as-copies, cross-device sync and accounts are not implemented.

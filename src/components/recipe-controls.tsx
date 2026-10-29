@@ -6,11 +6,7 @@ import {
   displayQuantity,
   recipeNutrition,
 } from "@/modules/recipes/presentation";
-import {
-  basketKey,
-  parseBasket,
-  basketDocument,
-} from "@/modules/basket/document";
+import { ShoppingAdd } from "./shopping-add";
 
 const subscribeToHydration = () => () => {};
 function useHydrated() {
@@ -67,36 +63,11 @@ export function Servings({
   );
 }
 export function RecipeControls({ recipe }: { recipe: RecipeAggregate }) {
-  const hydrated = useHydrated();
-  const [servings, setServings] = useState(recipe.baseServings),
-    [message, setMessage] = useState("");
+  const [servings, setServings] = useState(recipe.baseServings);
   const n = recipeNutrition(recipe);
   const groups = [
     ...new Set(recipe.ingredients.map((x) => x.line.groupLabel ?? "")),
   ];
-  function add() {
-    try {
-      const basket = parseBasket(localStorage.getItem(basketKey));
-      const next = basketDocument.parse({
-        ...basket,
-        items: [
-          ...basket.items.filter((i) => i.recipeId !== recipe.id),
-          {
-            recipeId: recipe.id,
-            selectedServings: servings,
-            addedAt: new Date().toISOString(),
-            schemaVersion: 1,
-          },
-        ],
-      });
-      localStorage.setItem(basketKey, JSON.stringify(next));
-      setMessage("Добавлено в список продуктов");
-    } catch {
-      setMessage(
-        "Не удалось сохранить список. Проверьте хранилище браузера или очистите список на его странице.",
-      );
-    }
-  }
   const nutrients = [
     { label: "Калории", value: n.perServing.caloriesKcal, unit: "ккал" },
     { label: "Белки", value: n.perServing.proteinG, unit: "г" },
@@ -134,10 +105,10 @@ export function RecipeControls({ recipe }: { recipe: RecipeAggregate }) {
           </ul>
         </div>
       ))}
-      <button disabled={!hydrated} onClick={add}>
-        В список продуктов
-      </button>
-      <p role="status">{message}</p>
+      <ShoppingAdd
+        reference={{ kind: "PUBLIC", id: recipe.id }}
+        servings={servings}
+      />
       <h2>КБЖУ на порцию</h2>
       {n.coverage.complete ? (
         <div className="nutrition">

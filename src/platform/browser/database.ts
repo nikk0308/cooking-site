@@ -77,7 +77,13 @@ export function openBrowserDatabase(
 const failures = new WeakMap<IDBTransaction, unknown>();
 export function abort(tx: IDBTransaction, error: unknown) {
   failures.set(tx, error);
-  tx.abort();
+  try {
+    tx.abort();
+  } catch (failure) {
+    // A browser/storage interruption may already have aborted the transaction.
+    if ((failure as { name?: string }).name !== "InvalidStateError")
+      throw failure;
+  }
 }
 export function received<T>(
   tx: IDBTransaction,

@@ -2,12 +2,9 @@
 import { useEffect, useState } from "react";
 import { browserError, useBrowserData } from "./browser-data";
 import { RecipeCard } from "./personal-recipes";
-import {
-  recipeDocument,
-  type RecipeDocument,
-} from "@/modules/recipes/document";
+import { type RecipeDocument } from "@/modules/recipes/document";
 import { recipeKey, type RecipeReference } from "@/modules/recipes/reference";
-import { resolveFavorites } from "@/modules/favorites/document";
+import { resolveReferences } from "@/platform/browser/resolve-recipes";
 type Row = {
   reference: RecipeReference;
   availability: "AVAILABLE" | "UNAVAILABLE" | "UNRESOLVED";
@@ -21,39 +18,8 @@ export function FavoritesPage() {
     let active = true;
     if (repo)
       (async () => {
-        const refs = (await repo.favorites.list()).items,
-          ids = refs.filter((r) => r.kind === "PUBLIC").map((r) => r.id),
-          publicRecipes = new Map<string, RecipeDocument>(),
-          failed = new Set<string>();
-        for (let i = 0; i < ids.length; i += 100) {
-          const batch = ids.slice(i, i + 100);
-          try {
-            const response = await fetch(
-              `/api/recipes/resolve?${new URLSearchParams(batch.map((id) => ["id", id]))}`,
-              { cache: "no-store" },
-            );
-            if (!response.ok) throw new Error();
-            const data = await response.json();
-            if (!Array.isArray(data.recipes) || data.recipes.length > 100)
-              throw new Error();
-            for (const raw of data.recipes) {
-              const r = recipeDocument.parse(raw);
-              if (
-                r.reference.kind !== "PUBLIC" ||
-                !batch.includes(r.reference.id)
-              )
-                throw new Error();
-              publicRecipes.set(r.reference.id, r);
-            }
-          } catch {
-            for (const id of batch) failed.add(id);
-          }
-        }
-        const resolved = await resolveFavorites(refs, async (ref) => {
-          if (ref.kind === "LOCAL") return (await repo.get(ref.id)) ?? null;
-          if (failed.has(ref.id)) throw new Error("Temporary resolver failure");
-          return publicRecipes.get(ref.id) ?? null;
-        });
+        const refs = (await repo.favorites.list()).items;
+        const resolved = await resolveReferences(repo, refs);
         if (active) {
           setRows(resolved);
           setError("");
