@@ -239,9 +239,12 @@ it("explicit linking does not adopt or overwrite manual product nutrition", asyn
 });
 it("categories reject normalized duplicates and refuse deleting used categories", async () => {
   const admin = catalogAdmin(fixture.db);
-  const c = await admin.saveCategory({ name: "Ёж", slug: "hedgehog" });
+  const c = await admin.saveCategory({ name: "Ёж   тест", slug: "hedgehog" });
+  expect((await admin.categories("  ЕЖ\t  тест ")).map((x) => x.id)).toEqual([
+    c.id,
+  ]);
   await expect(
-    admin.saveCategory({ name: "еж", slug: "another-hedgehog" }),
+    admin.saveCategory({ name: "еж тест", slug: "another-hedgehog" }),
   ).rejects.toThrow();
   const i = await admin.save({
     name: "Category fixture",

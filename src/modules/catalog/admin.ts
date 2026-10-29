@@ -9,6 +9,7 @@ import {
 } from "../../../db/schema";
 import { catalogIngredientInput, categoryInput, CatalogError } from "./input";
 import { hash, lockCatalog, readProduct, syncAliases } from "./state";
+import { normalizeIngredientName } from "./normalization";
 
 export function catalogAdmin(db = getDatabase()) {
   return {
@@ -93,12 +94,7 @@ export function catalogAdmin(db = getDatabase()) {
     },
     async categories(query = "") {
       z.string().max(100).parse(query);
-      const pattern = `%${query
-        .normalize("NFKC")
-        .toLowerCase()
-        .replaceAll("ё", "е")
-        .trim()
-        .replace(/[\\%_]/g, "\\$&")}%`;
+      const pattern = `%${normalizeIngredientName(query).replace(/[\\%_]/g, "\\$&")}%`;
       return db
         .select({
           id: ingredientCategories.id,
