@@ -23,7 +23,6 @@ jobs:
         options: --label com.docker.compose.project=culinote-bridge-ci --label com.docker.compose.service=postgres --health-cmd "pg_isready -U recipes -d recipes_test" --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       DATABASE_URL: postgresql://recipes:ci-only-password@127.0.0.1:5432/recipes_test
-      BACKUP_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -55,6 +54,8 @@ jobs:
       - name: Five-state real bridge and synthetic exact-image rollback rehearsal
         run: npx vitest run tests/bridge --reporter=verbose
         timeout-minutes: 10
+        env:
+          BACKUP_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
       # Intentionally no artifacts: fixture dumps/configuration stay disposable.
   retention:
     runs-on: ubuntu-latest
