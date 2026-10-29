@@ -66,6 +66,14 @@ jobs:
       - name: Integrated v0.2 user journey and notification fallbacks
         run: npm run test:e2e -- --config=playwright.release.config.ts
         timeout-minutes: 5
+      - name: Retain safe synthetic release failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: release-diagnostics-chromium
+          path: test-results/**/release-*
+          retention-days: 1
+          if-no-files-found: ignore
       - name: Nine cross-engine browser backup transfers
         run: npm run test:e2e -- --config=playwright.portability.config.ts
         timeout-minutes: 5
@@ -128,3 +136,18 @@ jobs:
       - name: Integrated v0.2 user journey and notification fallbacks
         run: npm run test:e2e -- --config=playwright.release.config.ts
         timeout-minutes: 5
+      - name: Three independent cold WebKit journeys (stop on first failure)
+        if: matrix.browser == 'webkit'
+        run: |
+          for sample in 1 2 3; do
+            npm run test:e2e -- --config=playwright.release.config.ts --grep 'admin/catalog/public/private/favorites/shopping/photo backup restore integrate without private writes' --output "test-results/release-sample-$sample"
+          done
+        timeout-minutes: 5
+      - name: Retain safe synthetic release failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: release-diagnostics-${{ matrix.browser }}
+          path: test-results/**/release-*
+          retention-days: 1
+          if-no-files-found: ignore
