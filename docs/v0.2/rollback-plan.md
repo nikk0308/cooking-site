@@ -15,6 +15,11 @@ v0.1. Every production action below requires separate owner approval.
 
 ## Compatibility boundary
 
+The [artifact preservation procedure](rollback-artifact-preservation.md) tests
+a synthetic exact-image/configuration roundtrip and defaults to reference-only
+preservation. It has not acquired the real installed image or private env. Source
+rebuild, actual image identity and a verified rollback artifact remain distinct.
+
 CI rebuilds exact old application sources
 `4f4807aa90c1bb52d6faaec5121f7c27bdada464` with the same Node version pinned by
 digest, and tests that runtime against a full restored v0.2 database. It verifies

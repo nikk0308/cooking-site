@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Inventory } from "./inventory";
+import inputs from "./build-inputs.json";
 const sha = z.string().regex(/^[a-f0-9]{40}$/),
   hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const releasePolicy = z
@@ -18,9 +19,7 @@ export const releasePolicy = z
       )
       .min(1)
       .max(3),
-    protectedRecoverySnapshot: z
-      .string()
-      .regex(/^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8}-[a-f0-9]{12}$/),
+    protectedRecoverySnapshot: z.literal(inputs.protectedRecoverySnapshot),
   })
   .strict();
 export type ReleasePolicy = z.infer<typeof releasePolicy>;

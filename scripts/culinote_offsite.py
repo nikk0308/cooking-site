@@ -60,12 +60,23 @@ def probe(s3):
 def versioned_local_contract(path,manifest,runtime_sha):
  policy=os.environ.get("CULINOTE_BACKUP_RELEASE_POLICY")
  source=os.environ.get("CULINOTE_BACKUP_RELEASE_SOURCE")
- if not policy and not manifest.get("inventory_version"):return  # Existing v0.1 contract, unchanged.
+ required=os.environ.get("CULINOTE_BACKUP_BRIDGE_REQUIRED")
+ receipt_path=STATE/"backup-bridge-required.json"
+ activated=receipt_path.exists()
+ if required not in (None,"0","1"):raise GateError("INVALID_BRIDGE_REQUIREMENT")
+ if not policy and not source and not manifest.get("inventory_version") and required!="1" and not activated:return
  if not policy or not source:raise GateError("VERSIONED_BACKUP_POLICY_REQUIRED")
+ node=os.environ.get("CULINOTE_BACKUP_NODE","node")
+ if activated:
+  receipt=read_json(receipt_path);p=read_json(policy)
+  if receipt.get("format")!=1 or not re.fullmatch(r"[a-f0-9]{40}",receipt.get("tool_sha","")) or receipt.get("tool_sha")!=p.get("toolSha") or receipt.get("policy_sha256")!=sha(policy) or receipt.get("protected_snapshot")!=p.get("protectedRecoverySnapshot") or receipt.get("protected_snapshot")!=read_json(STATE/"remote-restore-proof.json").get("snapshot"):
+   raise GateError("BRIDGE_ACTIVATION_BINDING_MISMATCH")
+  if manifest.get("backup_tool_sha")!=receipt["tool_sha"] or not manifest.get("inventory_version") or not Path(node).is_absolute():raise GateError("ACTIVATED_BRIDGE_CONTRACT_REQUIRED")
  validator=Path(source)/"scripts/backup/cli.ts"
  runner=Path(source)/"node_modules/tsx/dist/cli.mjs"
  if not validator.is_file() or not runner.is_file():raise GateError("VERSIONED_BACKUP_VALIDATOR_MISSING")
- result=subprocess.run(["node",str(runner),str(validator),"--mode","validate","--policy",policy,"--directory",str(path),"--runtime-sha",runtime_sha],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ try:result=subprocess.run([node,str(runner),str(validator),"--mode","validate","--policy",policy,"--directory",str(path),"--runtime-sha",runtime_sha],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env={**os.environ,"GIT_OPTIONAL_LOCKS":"0"},timeout=900)
+ except (OSError,subprocess.TimeoutExpired):raise GateError("VERSIONED_BACKUP_RUNTIME_UNAVAILABLE")
  if result.returncode:raise GateError("VERSIONED_BACKUP_CONTRACT_FAILED")
 
 def latest_local():

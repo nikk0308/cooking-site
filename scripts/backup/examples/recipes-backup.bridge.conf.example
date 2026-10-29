@@ -1,0 +1,27 @@
+# NOT INSTALLED. Owner-reviewed DROP-IN proposal; preserve the existing timer.
+# Replace paths/identities only after final source/policy/environment freeze.
+[Unit]
+Requires=culinote-backup-broker.service
+After=culinote-backup-broker.service
+
+[Service]
+User=culinote-backup
+Group=culinote-backup-bus
+SupplementaryGroups=culinote-media-readers
+ExecStart=
+ExecStart=/usr/bin/python3 /opt/culinote-backup-tools/TOOL_SHA/scripts/backup/bridge.py --config /etc/culinote-backup/bridge.json --mode capture
+Environment=PYTHONDONTWRITEBYTECODE=1
+LoadCredential=database:/etc/culinote-backup/database-url
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+UMask=0077
+ReadWritePaths=
+ReadWritePaths=/opt/docker-backups/recipes/daily /opt/docker-stacks/recipes/backup/backup.lock
+InaccessiblePaths=/var/run/docker.sock /run/docker.sock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Operator must add IPAddressDeny=any / approved PG IP allowlist after verifying
+# actual endpoint and systemd support. Never expose a new PostgreSQL host port.

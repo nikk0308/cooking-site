@@ -8,6 +8,54 @@ permissions:
   contents: read
 
 jobs:
+  backup-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+        env:
+          POSTGRES_DB: recipes_test
+          POSTGRES_USER: recipes
+          POSTGRES_PASSWORD: ci-only-password
+          PGDATA: /var/lib/postgresql/18/docker
+        ports: ["5432:5432"]
+        options: --label com.docker.compose.project=culinote-bridge-ci --label com.docker.compose.service=postgres --health-cmd "pg_isready -U recipes -d recipes_test" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://recipes:ci-only-password@127.0.0.1:5432/recipes_test
+      BACKUP_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - run: npm ci
+        timeout-minutes: 5
+      - name: Capability, peer, lock and interruption boundaries (no sudo)
+        run: |
+          python3 -B -m unittest discover -s scripts -p test_backup_broker.py -v
+          python3 -B -m unittest discover -s scripts -p test_backup_bridge.py -v
+      - name: Provision immutable tool environment artifact in isolation
+        run: |
+          export BRIDGE_ENVIRONMENT_DIR="$RUNNER_TEMP/culinote-bridge-environment"
+          echo "BRIDGE_ENVIRONMENT_DIR=$BRIDGE_ENVIRONMENT_DIR" >> "$GITHUB_ENV"
+          docker build --file scripts/backup/environment.Dockerfile --tag culinote-bridge-environment:${{ github.sha }} .
+          image_id=$(docker image inspect --format '{{.Id}}' culinote-bridge-environment:${{ github.sha }})
+          container_id=$(docker create --user 10001:10001 --label com.culinote.fixture=bridge-environment "$image_id" /unused)
+          mkdir -m 700 "$BRIDGE_ENVIRONMENT_DIR"
+          docker cp "$container_id:/bundle/." - | tar -x --no-same-owner -C "$BRIDGE_ENVIRONMENT_DIR"
+          chmod 700 "$BRIDGE_ENVIRONMENT_DIR"
+          docker rm "$container_id"
+          "$BRIDGE_ENVIRONMENT_DIR/node" --version
+          docker pull node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+        timeout-minutes: 5
+      - name: Five-state real bridge and synthetic exact-image rollback rehearsal
+        run: npx vitest run tests/bridge --reporter=verbose
+        timeout-minutes: 10
+      # Intentionally no artifacts: fixture dumps/configuration stay disposable.
   retention:
     runs-on: ubuntu-latest
     timeout-minutes: 5
