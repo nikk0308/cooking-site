@@ -52,7 +52,7 @@ jobs:
           docker pull node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
         timeout-minutes: 5
       - name: Five-state real bridge and synthetic exact-image rollback rehearsal
-        run: npx vitest run tests/bridge --reporter=verbose
+        run: npx vitest run tests/bridge --reporter=verbose --maxWorkers=1
         timeout-minutes: 10
         env:
           BACKUP_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}

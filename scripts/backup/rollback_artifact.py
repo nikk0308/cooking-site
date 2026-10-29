@@ -25,7 +25,7 @@ def image_identity(image):
     raw = subprocess.check_output(['docker', 'image', 'inspect', '--format', '{{json .Id}}\n{{json .RepoDigests}}', image], stderr=subprocess.DEVNULL, timeout=15).splitlines()
     if json.loads(raw[0]) != image:
         raise ValueError('IMAGE_ID_MISMATCH')
-    return {'image_id': image, 'repo_digests': json.loads(raw[1])}
+    return {'image_id': image, 'repo_digests': json.loads(raw[1]) or []}
 
 
 def preserve(directory, image, compose, runtime_env, media, pg_image, confirmation=False, export_image=False):
@@ -84,8 +84,10 @@ def verify(directory, require_image=True, require_complete=True, expected_record
     if require_complete and private_file(root / 'COMPLETE').read_text() != 'CULINOTE_ROLLBACK_ARTIFACT_VERIFIED\n':
         raise ValueError('COMPLETE_REQUIRED')
     record = json.loads(metadata.read_text())
-    if record.get('format') != 1 or set(record.get('files', {})) not in [{'compose.yaml', 'runtime.env'}, {'compose.yaml', 'runtime.env', 'image.tar'}]:
+    if set(record) != {'format', 'image_id', 'repo_digests', 'postgres_image', 'media_mount', 'files'} or record.get('format') != 1 or set(record.get('files', {})) not in [{'compose.yaml', 'runtime.env'}, {'compose.yaml', 'runtime.env', 'image.tar'}]:
         raise ValueError('ARTIFACT_INVENTORY_MISMATCH')
+    if not all(re.fullmatch(r'sha256:[a-f0-9]{64}', record[k]) for k in ['image_id', 'postgres_image']) or not Path(record['media_mount']).is_absolute():
+        raise ValueError('EXPLICIT_ARTIFACT_IDENTITIES_REQUIRED')
     for name, expected in record['files'].items():
         p = private_file(root / name)
         if p.stat().st_mode & 0o077 or digest(p) != expected:

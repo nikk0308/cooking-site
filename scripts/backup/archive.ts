@@ -184,6 +184,7 @@ export type BackupOptions = {
   runtime: { sha: string; image: string };
   policy: ReleasePolicy;
   toolSha: string;
+  assertRuntime?: () => Promise<void>;
 };
 export async function captureBackup(o: BackupOptions) {
   const dest = path.resolve(o.destination);
@@ -323,6 +324,7 @@ export async function captureBackup(o: BackupOptions) {
     );
     // Validate every artifact before publishing the same completion marker as v0.1.
     await loadBackup(dest, o.policy, o.runtime.sha, false);
+    await o.assertRuntime?.();
     for (const name of [...checked, "SHA256SUMS"])
       await sync(path.join(dest, name));
     await writeFile(path.join(dest, "COMPLETE"), "CULINOTE_BACKUP_SUCCESS\n", {

@@ -164,6 +164,14 @@ it("host bridge rehearses legacy, bridge, migration, new runtime and application
     );
     expect(await run("git", ["-C", source, "status", "--porcelain"])).toBe("");
     expect(await run(node, ["--version"])).toBe("v24.20.0");
+    const environmentRecord = JSON.parse(
+      await readFile(path.join(environment, "environment.json"), "utf8"),
+    );
+    expect(environmentRecord.baseImage).toBe(inputs.nodeImage);
+    expect(environmentRecord.nodeVersion).toBe("v24.20.0");
+    expect(environmentRecord.lockfileSha256).toBe(
+      await fileDigest(path.join(source, "package-lock.json")),
+    );
     await mkdir(path.join(root, "daily"), { mode: 0o700 });
     await mkdir(path.join(root, "media"), { mode: 0o700 });
     await writeFile(backupLock, "", { mode: 0o600 });
@@ -470,13 +478,43 @@ it("host bridge rehearses legacy, bridge, migration, new runtime and application
               carbohydratesG: "0",
               sourceKind: "IMPORT",
               sourceNote: "Synthetic test, not reference nutrition",
+              sourceUrl: "https://example.invalid/bridge-synthetic",
               sourceIdentifier: "bridge:one",
             },
           },
         ],
       }),
     );
+    const diagnostics = (p: Awaited<ReturnType<typeof imported.preview>>) => ({
+      counts: p.counts,
+      canApply: p.canApply,
+      rows: p.rows.map((r) => ({
+        row: r.row,
+        status: r.status,
+        messages: r.messages,
+        ingredientId: r.ingredientId,
+        candidateIds: r.matches?.map((m) => m.id),
+      })),
+    });
+    // Reproduce the published fixture error without applying or weakening it.
+    const invalidEnvelope = JSON.parse(new TextDecoder().decode(file));
+    delete invalidEnvelope.records[0].nutrition.sourceUrl;
+    const beforePreview = await state(old.pool);
+    const invalid = await imported.preview(
+      new TextEncoder().encode(JSON.stringify(invalidEnvelope)),
+      "json",
+    );
+    console.log("BRIDGE_INVALID_FIXTURE_PREVIEW", diagnostics(invalid));
+    expect(invalid.canApply).toBe(false);
+    expect(invalid.counts.INVALID).toBe(1);
+    expect(invalid.rows[0].messages.join("; ")).toContain(
+      "nutrition.sourceUrl",
+    );
+    expect(await state(old.pool)).toEqual(beforePreview);
     const plan = await imported.preview(file, "json");
+    console.log("BRIDGE_CORRECTED_FIXTURE_PREVIEW", diagnostics(plan));
+    expect(plan.canApply, JSON.stringify(diagnostics(plan))).toBe(true);
+    expect(plan.counts.CREATE).toBe(1);
     await imported.apply(file, "json", plan.hash);
     const oldNew = await capture("20260101T000000Z-00000003");
     expect(oldNew.state.schema.tables).toHaveLength(14);
@@ -520,6 +558,36 @@ it("host bridge rehearses legacy, bridge, migration, new runtime and application
       readFile(path.join(root, "daily/20260101T000000Z-00000006/COMPLETE")),
     ).rejects.toThrow();
     config.inventory_version = "v0.2";
+    const wrongPolicyFile = path.join(root, "wrong-fingerprint-policy.json");
+    await json(wrongPolicyFile, {
+      ...policy,
+      rules: policy.rules.map((r) => ({ ...r, schemaHash: "e".repeat(64) })),
+    });
+    await json(configFile, { ...config, policy: wrongPolicyFile });
+    expect(
+      (
+        await child("python3", [
+          "-B",
+          entry,
+          "--config",
+          configFile,
+          "--mode",
+          "capture",
+          "--directory",
+          "20260101T000000Z-00000008",
+        ])
+      ).code,
+    ).not.toBe(0);
+    await expect(
+      readFile(path.join(root, "daily/20260101T000000Z-00000008/COMPLETE")),
+    ).rejects.toThrow();
+    await expect(
+      loadBackup(
+        path.join(root, "daily/20260101T000000Z-00000005"),
+        policy,
+        oldSha,
+      ),
+    ).resolves.toBeTruthy();
     for (const altered of [
       { ...config, tool_sha: "c".repeat(40) },
       { ...config, runtime_sha: newSha },
@@ -527,6 +595,7 @@ it("host bridge rehearses legacy, bridge, migration, new runtime and application
       { ...config, database: "wrong_database" },
       { ...config, environment_manifest_sha256: "d".repeat(64) },
       { ...config, broker_uid: process.getuid!() + 1 },
+      { ...config, minimum_free_bytes: 0 },
     ]) {
       await json(configFile, altered);
       expect(

@@ -99,6 +99,11 @@ try {
         runtime,
         policy,
         toolSha,
+        assertRuntime: async () => {
+          const current = await inspectRuntime(v["app-container"]!);
+          if (current.sha !== runtime.sha || current.image !== runtime.image)
+            throw new Error("RUNTIME_CHANGED_DURING_CAPTURE");
+        },
       });
       console.log("VERSIONED_LOCAL_BACKUP_COMPLETE=PASS");
     } else if (v.mode === "restore") {

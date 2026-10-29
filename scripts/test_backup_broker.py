@@ -2,6 +2,8 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import json
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('broker', Path(__file__).parent / 'backup/docker_broker.py')
 broker = importlib.util.module_from_spec(spec)
@@ -47,6 +49,16 @@ class BrokerCapabilityTests(unittest.TestCase):
         allowed = ['inspect', '--format', broker.CONTRACT['runtimeInspect'], 'fixture-app']
         self.assertEqual(broker.authorize(self.config, allowed, 0), allowed)
         self.assertNotIn('.Config.Env', broker.CONTRACT['runtimeInspect'])
+
+    def test_privileged_database_role_is_rejected_by_the_broker(self):
+        a, b = 'sha256:' + 'a' * 64, 'sha256:' + 'b' * 64
+        config = {**self.config, 'docker': '/usr/bin/docker', 'docker_socket': '/var/run/docker.sock', 'project': 'fixture', 'runtimes': [{'sha': 'a' * 40, 'image': a}], 'pg_image': b}
+        replies = [json.dumps({'sha': 'a' * 40, 'image': a, 'project': 'fixture', 'service': 'app'}).encode(), json.dumps({'sha': None, 'image': b, 'project': 'fixture', 'service': 'postgres'}).encode(), b'f']
+        with patch.object(broker.subprocess, 'check_output', side_effect=replies) as run:
+            with self.assertRaisesRegex(ValueError, 'READ_ONLY_DATABASE_ROLE_REQUIRED'):
+                broker.identities(config)
+            self.assertEqual(run.call_args.args[0][3:7], ['exec', '--user', '70', 'fixture-pg'])
+            self.assertEqual(run.call_args.kwargs['env'], broker.DOCKER_ENV)
 
 
 if __name__ == '__main__':

@@ -79,6 +79,17 @@ it("synthetic exact image and private configuration roundtrip independently of s
     await expect(run("python3", args)).rejects.toThrow();
     await run("python3", [...args, "--confirm-owner-authorized-preservation"]);
     const recordSha = await fileDigest(path.join(artifact, "artifact.json"));
+    const reference = path.join(root, "reference-only");
+    await run("python3", [
+      ...args
+        .filter((a) => a !== "--export-image")
+        .map((a) => (a === artifact ? reference : a)),
+      "--confirm-owner-authorized-preservation",
+    ]);
+    const referenceSha = await fileDigest(
+      path.join(reference, "artifact.json"),
+    );
+    await expect(readFile(path.join(reference, "image.tar"))).rejects.toThrow();
     await run("python3", [
       script,
       "verify",
@@ -100,6 +111,17 @@ it("synthetic exact image and private configuration roundtrip independently of s
       expect((await stat(path.join(artifact, name))).mode & 0o077).toBe(0);
     await run("docker", ["image", "rm", "--no-prune", tag]);
     await expect(run("docker", ["image", "inspect", image])).rejects.toThrow();
+    await expect(
+      run("python3", [
+        script,
+        "restore-image",
+        "--directory",
+        reference,
+        "--expected-record-sha",
+        referenceSha,
+        "--confirm-owner-authorized-preservation",
+      ]),
+    ).rejects.toThrow();
     await expect(
       run("python3", [
         script,
