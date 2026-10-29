@@ -332,7 +332,7 @@ test("shopping quota failures revert pending marks, preserve manual draft and ro
   await fail("shopping");
   await page
     .getByRole("checkbox", { name: "Куплено: Оригинал", exact: true })
-    .check();
+    .click();
   await expect(
     page
       .locator("main")
