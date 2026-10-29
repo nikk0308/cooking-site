@@ -256,6 +256,49 @@ test("category and ingredient CRUD preserve legitimate nutrition and aliases; bo
   await expect(
     page.getByLabel("Ингредиент", { exact: true }).locator("option"),
   ).toHaveCount(2);
+  await page
+    .getByRole("button", { name: "Добавить ингредиент", exact: true })
+    .click();
+  await page
+    .getByLabel("Поиск ингредиента", { exact: true })
+    .nth(1)
+    .fill("творог");
+  await page
+    .getByRole("button", { name: "Найти продукт", exact: true })
+    .nth(1)
+    .click();
+  await page
+    .getByLabel("Ингредиент", { exact: true })
+    .nth(1)
+    .selectOption({ label: "Творог (tvorog)" });
+  const secondId = await page
+    .getByLabel("Ингредиент", { exact: true })
+    .nth(1)
+    .inputValue();
+  await page.getByRole("button", { name: "Ниже", exact: true }).first().click();
+  await expect(
+    page.getByLabel("Ингредиент", { exact: true }).nth(0),
+  ).toHaveValue(secondId);
+  await expect(
+    page.getByLabel("Ингредиент", { exact: true }).nth(1),
+  ).toHaveValue(id);
+  await page
+    .getByLabel("Название", { exact: true })
+    .fill("Search selection reorder");
+  await page
+    .getByLabel("Slug", { exact: true })
+    .fill("search-selection-reorder");
+  await page
+    .getByRole("button", { name: "Сохранить рецепт", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/admin\/recipes\/[a-f0-9-]{36}$/);
+  await page.reload();
+  await expect(
+    page.getByLabel("Ингредиент", { exact: true }).nth(0),
+  ).toHaveValue(secondId);
+  await expect(
+    page.getByLabel("Ингредиент", { exact: true }).nth(1),
+  ).toHaveValue(id);
 });
 
 test("JSON preview, atomic apply, idempotent repeat, changed data, stale preview and retry", async ({

@@ -9,7 +9,7 @@ export function AdminIngredientPicker({
 }: {
   value: string;
   selected: Option[];
-  onChange: (id: string) => void;
+  onChange: (id: string, item?: Option) => void;
 }) {
   const ready = useCatalogReady();
   const [query, setQuery] = useState(""),
@@ -66,7 +66,10 @@ export function AdminIngredientPicker({
           value={value}
           onChange={(e) => {
             setChosen(options.find((i) => i.id === e.target.value) ?? null);
-            onChange(e.target.value);
+            onChange(
+              e.target.value,
+              options.find((i) => i.id === e.target.value),
+            );
           }}
         >
           <option value="">Выберите</option>

@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { createSlug } from "@/modules/recipes/slug";
 import type { RecipeInput } from "@/modules/recipes/input";
-type Option = { id: string; name: string };
+type Option = { id: string; name: string; slug?: string };
 const subscribeHydration = () => () => {};
 function useHydrated() {
   return useSyncExternalStore(
@@ -102,6 +102,9 @@ export function RecipeForm({
     [busy, setBusy] = useState(false),
     [uploading, setUploading] = useState(false),
     [imageMessage, setImageMessage] = useState("");
+  // Row order is editable: selected labels belong to the form, not an index-keyed
+  // picker instance. Retain only current selections plus the just-picked item.
+  const [pickedIngredients, setPickedIngredients] = useState<Option[]>([]);
   const router = useRouter();
   const change = <K extends keyof RecipeInput>(key: K, value: RecipeInput[K]) =>
     setV((old) => ({ ...old, [key]: value }));
@@ -276,15 +279,26 @@ export function RecipeForm({
           <div className="form-grid">
             <AdminIngredientPicker
               value={line.ingredientId}
-              selected={ingredients}
-              onChange={(id) =>
+              selected={[...ingredients, ...pickedIngredients]}
+              onChange={(id, item) => {
+                if (item)
+                  setPickedIngredients((old) => [
+                    ...old.filter(
+                      (x) =>
+                        x.id !== item.id &&
+                        v.ingredients.some(
+                          (line) => line.ingredientId === x.id,
+                        ),
+                    ),
+                    item,
+                  ]);
                 change(
                   "ingredients",
                   v.ingredients.map((x, j) =>
                     j === i ? { ...x, ingredientId: id } : x,
                   ),
-                )
-              }
+                );
+              }}
             />
             <label>
               Количество
