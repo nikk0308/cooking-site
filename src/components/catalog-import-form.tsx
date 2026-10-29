@@ -25,6 +25,11 @@ export function CatalogImportForm() {
           ? "json"
           : null;
       if (!format) throw new Error("Выберите CSV или JSON версии 1.");
+      const encodedDecisions = encodeURIComponent(JSON.stringify(decisions));
+      if (encodedDecisions.length > 8192)
+        throw new Error(
+          "Слишком много решений в части. Разделите файл на меньшие части и повторите preview.",
+        );
       const response = await fetch(
         `/api/admin/ingredients/import?format=${format}&action=${action}`,
         {
@@ -32,9 +37,7 @@ export function CatalogImportForm() {
           headers: {
             "Content-Type": "application/octet-stream",
             "X-Catalog-Plan": plan?.hash ?? "",
-            "X-Catalog-Decisions": encodeURIComponent(
-              JSON.stringify(decisions),
-            ),
+            "X-Catalog-Decisions": encodedDecisions,
           },
           body: file,
         },
@@ -60,16 +63,21 @@ export function CatalogImportForm() {
     }
   }
   function choose(id: string, value: string) {
-    const next = { ...decisions };
-    if (!value) delete next[id];
-    else
-      next[id] = value.startsWith("link:")
+    const next: ImportDecisions = Object.fromEntries(
+      Object.entries(decisions).filter(([key]) => key !== id),
+    );
+    if (!value) setDecisions(next);
+    else {
+      const selected = value.startsWith("link:")
         ? { link: value.slice(5) }
         : (value as "DISTINCT" | "KEEP" | "REPLACE");
-    setDecisions(next);
+      setDecisions({ ...next, [id]: selected });
+    }
     setMessage("Решение изменено. Повторите preview перед подтверждением.");
     setPlan((old) => (old ? { ...old, canApply: false } : null));
   }
+  const decisionFor = (id: string) =>
+    Object.hasOwn(decisions, id) ? decisions[id] : undefined;
   return (
     <section>
       <p>
@@ -137,7 +145,7 @@ export function CatalogImportForm() {
                 {r.messages.map((m, i) => (
                   <p key={i}>{m}</p>
                 ))}
-                {(r.status === "CONFLICT" || decisions[r.externalId]) &&
+                {(r.status === "CONFLICT" || decisionFor(r.externalId)) &&
                   r.externalId && (
                     <label>
                       Решение для {r.externalId}
@@ -145,9 +153,9 @@ export function CatalogImportForm() {
                         aria-label={`Решение для ${r.externalId}`}
                         disabled={busy || applied}
                         value={
-                          typeof decisions[r.externalId] === "object"
-                            ? `link:${(decisions[r.externalId] as { link: string }).link}`
-                            : ((decisions[r.externalId] as string) ?? "")
+                          typeof decisionFor(r.externalId) === "object"
+                            ? `link:${(decisionFor(r.externalId) as { link: string }).link}`
+                            : ((decisionFor(r.externalId) as string) ?? "")
                         }
                         onChange={(e) => choose(r.externalId, e.target.value)}
                       >

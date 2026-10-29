@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { catalogIngredientInput, importRecord } from "@/modules/catalog/input";
+import {
+  catalogIngredientInput,
+  importRecord,
+  importDecisions,
+} from "@/modules/catalog/input";
 import {
   csvColumns,
   decodeImport,
@@ -22,6 +26,18 @@ const envelope = {
   records: [record],
 };
 describe("catalog import contract", () => {
+  it("preserves opaque special source ID decisions without prototype mutation", () => {
+    const raw = JSON.parse(
+      '{"__proto__":"DISTINCT","constructor":"KEEP","toString":"REPLACE"}',
+    );
+    const parsed = importDecisions.parse(raw);
+    expect(Object.hasOwn(parsed, "__proto__")).toBe(true);
+    expect(parsed["__proto__"]).toBe("DISTINCT");
+    expect(parsed.constructor).toBe("KEEP");
+    expect(Object.getPrototypeOf(parsed)).toBe(Object.prototype);
+    expect(Object.hasOwn(importDecisions.parse({}), "__proto__")).toBe(false);
+    expect(() => importDecisions.parse({ x: "UNKNOWN" })).toThrow();
+  });
   it("rejects escaped NUL metadata before database application", () => {
     expect(() =>
       decodeImport(encode({ ...envelope, batch: "bad\0batch" }), "json"),

@@ -335,12 +335,13 @@ test("UTF8 CSV, conflicting manual mapping, malformed input, request failure and
   });
   expect(manual.ok()).toBe(true);
   const conflicting = envelope("manual-link", "Manual mapping candidate");
+  conflicting.records[0].externalId = "__proto__";
   await upload(page, conflicting);
   await expect(page.locator("main")).toContainText("CONFLICT: 1");
   await expect(
     page.getByRole("button", { name: "Подтвердить импорт", exact: true }),
   ).toBeDisabled();
-  const select = page.getByLabel("Решение для manual-link", { exact: true });
+  const select = page.getByLabel("Решение для __proto__", { exact: true });
   const option = await select
     .locator('option[value^="link:"]')
     .getAttribute("value");
@@ -348,6 +349,7 @@ test("UTF8 CSV, conflicting manual mapping, malformed input, request failure and
   await page
     .getByRole("button", { name: "Проверить файл — preview", exact: true })
     .click();
+  await expect(select).toHaveValue(option!);
   await apply(page);
   await upload(page, "{bad json");
   await expect(page.getByRole("status")).toContainText("Не удалось разобрать");

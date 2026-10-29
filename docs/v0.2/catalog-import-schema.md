@@ -10,6 +10,8 @@ Each record has required `externalId` (1–256 characters), `name` (1–256), op
 
 Source IDs with leading/trailing whitespace are rejected rather than silently trimmed. Unchanged alias UUIDs are retained; ordinary alias spelling/case edits with the same normalized key preserve their UUID as well.
 
+Opaque source IDs such as `__proto__`, `constructor` and `toString` remain ordinary strings; decision lookup uses own properties and preserves these keys. Decision metadata is limited to 8 KiB after URI encoding (and 500 entries); split a part further if many long IDs need explicit decisions. Both browser and server enforce this bound before application.
+
 Profile fields: `basisQuantity`, `basisUnit` (existing unit code), `caloriesKcal`, `proteinG`, `fatG`, `carbohydratesG`, `sourceKind`, `sourceNote`, `sourceUrl`, `sourceIdentifier`. All five numeric values are **strings**: at most 12 integer and 6 fractional digits, dot separator, no exponent/comma/sign. Basis must be positive; nutrients may intentionally be zero. Every nutrient is mandatory when a profile exists. No conversion or fabricated values. `sourceKind`: UNKNOWN / MANUAL / REFERENCE / IMPORT. IMPORT requires a nonempty supplied sourceIdentifier. SourceNote is bounded to 1000 characters; URL to 2048 and HTTP(S) without embedded credentials; identifier to 256. URLs are metadata only.
 
 Aliases are normalized with existing NFKC/lowercase/ё→е/whitespace rules. Up to 40 supplied aliases and 20 distinct normalized aliases. Redundant import aliases are deduplicated with a preview notice; manual CRUD rejects duplicates. Shared aliases across different UUIDs retain ambiguity.

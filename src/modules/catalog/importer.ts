@@ -127,7 +127,9 @@ async function plan(
           eq(catalogSourceRecords.externalId, r.externalId),
         ),
       );
-    const choice = decisions[r.externalId];
+    const choice = Object.hasOwn(decisions, r.externalId)
+      ? decisions[r.externalId]
+      : undefined;
     row.mappingExists = !!mapping;
     row.ingredientId =
       mapping?.ingredientId ?? sourceUuid(envelope.namespace, r.externalId);
@@ -168,6 +170,13 @@ async function plan(
       }
       row.ingredientId = choice.link;
       row.mode = "LINK_ONLY";
+      row.matches = [
+        {
+          id: current.ingredient.id,
+          name: current.ingredient.name,
+          slug: current.ingredient.slug,
+        },
+      ];
       row.before = current.snapshot;
       row.status = "UPDATE";
       row.messages.push("Явная связь без изменения существующих полей и КБЖУ.");

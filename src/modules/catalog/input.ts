@@ -173,11 +173,40 @@ export const importEnvelope = z
   })
   .strict();
 export type ImportRecord = z.infer<typeof importRecord>;
-export const importDecisions = z.record(
-  z.string().max(256),
-  z.union([
-    z.enum(["DISTINCT", "KEEP", "REPLACE"]),
-    z.object({ link: z.uuid() }).strict(),
-  ]),
-);
-export type ImportDecisions = z.infer<typeof importDecisions>;
+const decisionValue = z.union([
+  z.enum(["DISTINCT", "KEEP", "REPLACE"]),
+  z.object({ link: z.uuid() }).strict(),
+]);
+export type ImportDecisions = Record<string, z.infer<typeof decisionValue>>;
+// Validate entries rather than z.record: reserved JS keys are legitimate opaque
+// source IDs and must neither disappear nor invoke a prototype setter.
+export const importDecisions = z
+  .unknown()
+  .transform((raw, ctx): ImportDecisions => {
+    if (
+      raw === null ||
+      typeof raw !== "object" ||
+      Array.isArray(raw) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(raw)) ||
+      Object.keys(raw).length > 500
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Решения должны быть объектом, максимум 500 записей.",
+      });
+      return z.NEVER;
+    }
+    const entries = z
+      .array(z.tuple([z.string().min(1).max(256), decisionValue]))
+      .max(500)
+      .safeParse(Object.entries(raw));
+    if (!entries.success) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Недопустимые решения импорта: DISTINCT / KEEP / REPLACE или link UUID.",
+      });
+      return z.NEVER;
+    }
+    return Object.fromEntries(entries.data);
+  });

@@ -287,6 +287,29 @@ it("alias rename preserves UUID; duplicate aliases and stale forms preserve save
   expect(await repo.aliases(ingredient.id)).toHaveLength(2);
 });
 
+it("opaque prototype-like source IDs import and explicit decisions retain their meaning", async () => {
+  const s = catalogImporter(fixture.db);
+  const r = {
+    ...record("__proto__", "Prototype-like source ID"),
+    slug: "synthetic-prototype-source",
+  };
+  const file = bytes([r], "prototype-source-one"),
+    p = await s.preview(file, "json");
+  expect(p.counts.CREATE).toBe(1);
+  await s.apply(file, "json", p.hash);
+  expect((await s.preview(file, "json")).counts.UNCHANGED).toBe(1);
+  const second = bytes(
+    [{ ...r, slug: "synthetic-prototype-source-two" }],
+    "prototype-source-two",
+  );
+  expect((await s.preview(second, "json")).counts.CONFLICT).toBe(1);
+  const decisions = JSON.parse('{"__proto__":"DISTINCT"}');
+  const explicit = await s.preview(second, "json", decisions);
+  expect(explicit.counts.CREATE).toBe(1);
+  await s.apply(second, "json", explicit.hash, decisions);
+  expect((await s.preview(second, "json")).counts.UNCHANGED).toBe(1);
+});
+
 it("imported UUID remains a valid public recipe FK and catalog search identity", async () => {
   const service = catalogImporter(fixture.db),
     file = bytes([record("public-recipe")]);

@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const format = z.enum(["csv", "json"]).parse(params.get("format"));
     const action = z.enum(["preview", "apply"]).parse(params.get("action"));
     const decisionHeader = request.headers.get("x-catalog-decisions") ?? "{}";
-    if (decisionHeader.length > 32000)
+    if (decisionHeader.length > 8192)
       return Response.json(
         { error: "Слишком много решений в одной части." },
         { status: 400 },
