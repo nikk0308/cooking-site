@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase } from "@/platform/db/client";
 import {
@@ -14,6 +14,10 @@ const searchInput = z
     query: z.string().max(100),
     categoryId: z.uuid().optional(),
     limit: z.number().int().min(1).max(50).default(20),
+    cursor: z
+      .object({ name: z.string().max(256), id: z.uuid() })
+      .strict()
+      .optional(),
   })
   .strict();
 // Intentionally read-only. Catalog mutation still belongs to protected admin APIs.
@@ -43,15 +47,19 @@ export function catalogRepository(db = getDatabase()) {
         .limit(200),
     async search(raw: z.input<typeof searchInput>) {
       const v = searchInput.parse(raw);
-      const needle = `%${normalizeIngredientName(v.query).replace(/[\\%_]/g, "\\$&")}%`;
+      const normalized = normalizeIngredientName(v.query);
+      const escaped = normalized.replace(/[\\%_]/g, "\\$&");
+      const needle = normalized.length < 3 ? `${escaped}%` : `%${escaped}%`;
       return select()
         .where(
           and(
             v.categoryId ? eq(ingredients.categoryId, v.categoryId) : undefined,
-            or(
-              sql`${ingredients.normalizedName} LIKE ${needle} ESCAPE '\'`,
-              sql`EXISTS (SELECT 1 FROM ${ingredientAliases} WHERE ${ingredientAliases.ingredientId} = ${ingredients.id} AND ${ingredientAliases.normalizedName} LIKE ${needle} ESCAPE '\')`,
-            ),
+            normalized
+              ? sql`${ingredients.id} IN (SELECT id FROM ${ingredients} WHERE normalized_name LIKE ${needle} ESCAPE '\' UNION SELECT ${ingredientAliases.ingredientId} FROM ${ingredientAliases} WHERE ${ingredientAliases.normalizedName} LIKE ${needle} ESCAPE '\')`
+              : undefined,
+            v.cursor
+              ? sql`(${ingredients.normalizedName},${ingredients.id}) > (${v.cursor.name},${v.cursor.id}::uuid)`
+              : undefined,
           ),
         )
         .orderBy(asc(ingredients.normalizedName), asc(ingredients.id))

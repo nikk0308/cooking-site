@@ -7,3 +7,4 @@ export * from "./admin";
 export * from "./media";
 export * from "./categories";
 export * from "./aliases";
+export * from "./catalog-imports";

@@ -18,3 +18,7 @@ Phase 6.6 now implements `/basket` on the existing Shopping v2 repository, publi
 Publication remains a data-layer rule: `recipeRepository.resolvePublishedRecipes` filters PUBLISHED; `resolvePublicDocuments` uses only that method. Administrative writes retain session and same-origin checks. No new public mutation endpoint exists.
 
 Acceptance: clean and upgraded PostgreSQL 18 retain existing UUIDs/values; local browser data survives reload; failed upgrades and writes preserve old data; missing nutrition stays explicit; old basket bytes remain; all CI checks pass before review readiness. No production or infrastructure changes are part of this branch.
+
+# Phase 6.7 delivered scope
+
+Shared catalog administration and versioned CSV/JSON importer use existing ingredients/category/alias/nutrition tables. Required checks include stable source mappings, read-only deterministic preview, explicit ambiguity/manual-change decisions, stale-plan detection, rollback, idempotency, admin session/origin boundaries and realistic indexed search. Profile enable never supplies synthetic zeros. Bulk operations are bounded atomic parts, not destructive whole-catalog replacement. See catalog-import-schema.md for enforced limits and precedence, and catalog-owner-walkthrough.md for isolated validation.

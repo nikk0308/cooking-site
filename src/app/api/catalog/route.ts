@@ -52,7 +52,12 @@ export async function GET(request: Request) {
             },
           });
       }
-      return { id: r.ingredient.id, name: r.ingredient.name, nutrition };
+      return {
+        id: r.ingredient.id,
+        name: r.ingredient.name,
+        slug: r.ingredient.slug,
+        nutrition,
+      };
     }),
   );
   return Response.json({ items }, { headers: { "Cache-Control": "no-store" } });

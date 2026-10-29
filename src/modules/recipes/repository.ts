@@ -1,3 +1,4 @@
+import { catalogAdmin } from "@/modules/catalog/admin";
 import { and, asc, desc, eq, inArray, type SQL } from "drizzle-orm";
 import { getDatabase } from "@/platform/db/client";
 import {
@@ -9,7 +10,7 @@ import {
   ingredientNutrition,
   media,
 } from "../../../db/schema";
-import { ingredientInput, recipeInput } from "./input";
+import { recipeInput } from "./input";
 
 export function recipeRepository(db = getDatabase()) {
   async function aggregates(where: SQL | undefined, limit = 100) {
@@ -147,33 +148,7 @@ export function recipeRepository(db = getDatabase()) {
       });
     },
     async saveIngredient(raw: unknown) {
-      const v = ingredientInput.parse(raw);
-      return db.transaction(async (tx) => {
-        const { id, nutrition, ...row } = v;
-        const saved = id
-          ? (
-              await tx
-                .update(ingredients)
-                .set({ ...row, updatedAt: new Date() })
-                .where(eq(ingredients.id, id))
-                .returning()
-            )[0]
-          : (await tx.insert(ingredients).values(row).returning())[0];
-        if (!saved) throw new Error("Ingredient not found");
-        if (nutrition)
-          await tx
-            .insert(ingredientNutrition)
-            .values({ ...nutrition, ingredientId: saved.id })
-            .onConflictDoUpdate({
-              target: ingredientNutrition.ingredientId,
-              set: { ...nutrition, updatedAt: new Date() },
-            });
-        else
-          await tx
-            .delete(ingredientNutrition)
-            .where(eq(ingredientNutrition.ingredientId, saved.id));
-        return saved.id;
-      });
+      return (await catalogAdmin(db).save(raw)).id;
     },
   };
 }

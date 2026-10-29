@@ -150,7 +150,7 @@ it("upgrades v0.1 with real data without changing IDs, values, publications or a
           "SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations",
         )
       ).rows[0].n,
-    ).toBe(3);
+    ).toBe(4);
   } finally {
     await legacy?.cleanup();
     await rm(folder, { recursive: true, force: true });

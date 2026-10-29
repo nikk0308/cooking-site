@@ -16,7 +16,12 @@ export function CatalogPicker({
 }) {
   const [query, setQuery] = useState(""),
     [rows, setRows] = useState<
-      { id: string; name: string; nutrition: Line["nutrition"] }[]
+      {
+        id: string;
+        name: string;
+        slug?: string;
+        nutrition: Line["nutrition"];
+      }[]
     >([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -87,6 +92,9 @@ export function CatalogPicker({
               onClick={() => select(r)}
             >
               Выбрать {r.name}
+              {rows.filter((item) => item.name === r.name).length > 1
+                ? ` (${r.slug ?? r.id})`
+                : ""}
             </button>
           </li>
         ))}

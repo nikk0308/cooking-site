@@ -22,6 +22,13 @@
       "when": 1793184739895,
       "tag": "0002_v02_catalog_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793254584371,
+      "tag": "0003_v02_catalog_importer",
+      "breakpoints": true
     }
   ]
 }

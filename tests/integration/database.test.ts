@@ -62,6 +62,9 @@ describe("Phase 4 PostgreSQL domain schema", () => {
       expect(tables.rows.map((row) => row.table_name)).toEqual([
         "admin_sessions",
         "admin_users",
+        "catalog_import_runs",
+        "catalog_revision",
+        "catalog_source_records",
         "ingredient_aliases",
         "ingredient_categories",
         "ingredient_nutrition",
