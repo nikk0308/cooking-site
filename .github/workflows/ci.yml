@@ -141,6 +141,14 @@ jobs:
         timeout-minutes: 10
       - run: docker build --target maintenance --tag recipes:readiness-maintenance .
         timeout-minutes: 5
+      - name: Build disposable ACL acceptance image
+        run: docker build --build-arg MEDIA_TEST_BASE=recipes:readiness-maintenance -f tests/media-permissions/Dockerfile -t recipes:media-acl .
+        timeout-minutes: 3
+      - name: Real Linux media reader isolation (no skipped ACL tests)
+        run: npx vitest run tests/media-permissions --reporter=verbose
+        env:
+          MEDIA_PERMISSION_TEST_IMAGE: recipes:media-acl
+        timeout-minutes: 2
       - run: npm run docker:config
       - name: Production container smoke and cleanup
         run: node scripts/smoke/production-local.mjs
