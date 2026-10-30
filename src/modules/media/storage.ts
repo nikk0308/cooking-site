@@ -2,7 +2,31 @@ import path from "node:path";
 import { mkdir, open, rename, unlink, realpath } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
 import sharp from "sharp";
+// Defense in depth for every Sharp call in this process. Do not unblock loaders.
+sharp.block({ operation: ["VipsForeignLoadSvg"] });
 export const maxUpload = 10 * 1024 * 1024;
+function rasterSignature(input: Uint8Array) {
+  const bytes = Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  )
+    return "jpeg";
+  if (
+    bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  )
+    return "png";
+  if (
+    bytes.length >= 16 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP" &&
+    ["VP8 ", "VP8L", "VP8X"].includes(bytes.toString("ascii", 12, 16))
+  )
+    return "webp";
+  throw new Error("Unsupported image signature");
+}
 export function mediaPath(root: string, key: string) {
   if (
     !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\.webp$/.test(
@@ -29,13 +53,16 @@ export async function checkMediaStorage() {
 export async function storeImage(input: Uint8Array) {
   if (!input.length || input.length > maxUpload)
     throw new Error("Invalid image size");
+  // Only binary raster candidates may reach native metadata/decoding, regardless
+  // of the request MIME or filename. The patched decoder still validates content.
+  const candidate = rasterSignature(input);
   const pipeline = sharp(input, {
     limitInputPixels: 20_000_000,
     failOn: "warning",
   });
   const meta = await pipeline.metadata();
   if (
-    !["jpeg", "png", "webp"].includes(meta.format ?? "") ||
+    meta.format !== candidate ||
     !meta.width ||
     !meta.height ||
     (meta.pages ?? 1) !== 1

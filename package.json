@@ -29,12 +29,12 @@
   "dependencies": {
     "decimal.js": "^10.6.0",
     "drizzle-orm": "^0.45.2",
-    "next": "16.3.3",
+    "next": "16.4.1",
     "pg": "^8.23.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "sharp": "^0.35.4",
-    "zod": "^4.5.4"
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "sharp": "0.35.5",
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
@@ -45,7 +45,7 @@
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.2",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.4.1",
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
     "typescript": "^5",
