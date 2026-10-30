@@ -21,6 +21,12 @@ release time; source inspection in 6.8A is not current health evidence.
 
 ## Gate 1: recovery and bridge before migration
 
+Use the prepared [bridge architecture](backup-bridge-architecture.md), inactive
+unit proposals, [transition rehearsal/final freeze](backup-bridge-rehearsal.md)
+and [rollback artifact procedure](rollback-artifact-preservation.md). They are
+reviewed source, not installed service compatibility evidence. Resolve the
+package-version decision and exact final TOOL_SHA separately from RELEASE_SHA.
+
 1. Capture/verify a pre-migration v0.1 backup and encrypted remote COMPLETE using
    the currently working system. Record its exact ID and matching app/media.
    Owner-assisted restore is a separate gate; never expose the private age key.

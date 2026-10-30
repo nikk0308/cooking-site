@@ -21,6 +21,7 @@ const { values: v } = parseArgs({
 });
 let pool: Pool | undefined;
 try {
+  if (process.version !== "v24.20.0") throw new Error("PINNED_NODE_REQUIRED");
   if (!v.output) throw new Error("EXPLICIT_OUTPUT_REQUIRED");
   let result: unknown;
   if (v.mode === "inventory") {

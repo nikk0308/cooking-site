@@ -1,8 +1,18 @@
 import { spawn } from "node:child_process";
 import { createReadStream, createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
-import { readFile, writeFile, mkdir, lstat, rm, open } from "node:fs/promises";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  lstat,
+  rm,
+  open,
+  chmod,
+} from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import brokerContract from "./broker-contract.json";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { checkBinding, checkGuard, type ReleasePolicy } from "./guard";
@@ -61,7 +71,21 @@ export async function run(
   args: string[],
   options: { inputFile?: string; outputFile?: string } = {},
 ) {
-  const child = spawn(command, args, {
+  const broker = process.env.CULINOTE_BACKUP_DOCKER_BROKER;
+  const brokerArgs =
+    command === "docker" && broker
+      ? [
+          fileURLToPath(new URL("./docker_broker.py", import.meta.url)),
+          "client",
+          "--socket",
+          broker,
+          "--input-bytes",
+          String(options.inputFile ? (await lstat(options.inputFile)).size : 0),
+          "--",
+          ...args,
+        ]
+      : null;
+  const child = spawn(brokerArgs ? "python3" : command, brokerArgs ?? args, {
     stdio: [options.inputFile ? "pipe" : "ignore", "pipe", "pipe"],
   });
   let output = "",
@@ -71,7 +95,7 @@ export async function run(
   });
   const completed = new Promise<void>((resolve, reject) => {
     child.once("error", () => reject(new Error("BACKUP_TOOL_UNAVAILABLE")));
-    child.once("exit", (code) =>
+    child.once("close", (code) =>
       code === 0
         ? resolve()
         : reject(
@@ -131,17 +155,22 @@ export async function inspectRuntime(container: string) {
   if (!/^[a-zA-Z0-9_.-]+$/.test(container))
     throw new Error("UNSAFE_RUNTIME_TARGET");
   const meta = JSON.parse(
-    await run("docker", ["inspect", "--format", "{{json .}}", container]),
+    await run("docker", [
+      "inspect",
+      "--format",
+      brokerContract.runtimeInspect,
+      container,
+    ]),
   );
   return {
     sha: z
       .string()
       .regex(/^[a-f0-9]{40}$/)
-      .parse(meta.Config.Labels?.["org.opencontainers.image.revision"]),
+      .parse(meta.sha),
     image: z
       .string()
       .regex(/^sha256:[a-f0-9]{64}$/)
-      .parse(meta.Image),
+      .parse(meta.image),
   };
 }
 export type BackupOptions = {
@@ -155,6 +184,7 @@ export type BackupOptions = {
   runtime: { sha: string; image: string };
   policy: ReleasePolicy;
   toolSha: string;
+  assertRuntime?: () => Promise<void>;
 };
 export async function captureBackup(o: BackupOptions) {
   const dest = path.resolve(o.destination);
@@ -244,6 +274,7 @@ export async function captureBackup(o: BackupOptions) {
       stage,
       ".",
     ]);
+    await chmod(path.join(dest, "media.tar.gz"), 0o600);
     if (path.dirname(stage) !== dest || (await lstat(stage)).isSymbolicLink())
       throw new Error("UNSAFE_STAGING_CLEANUP");
     await rm(stage, { recursive: true });
@@ -293,6 +324,7 @@ export async function captureBackup(o: BackupOptions) {
     );
     // Validate every artifact before publishing the same completion marker as v0.1.
     await loadBackup(dest, o.policy, o.runtime.sha, false);
+    await o.assertRuntime?.();
     for (const name of [...checked, "SHA256SUMS"])
       await sync(path.join(dest, name));
     await writeFile(path.join(dest, "COMPLETE"), "CULINOTE_BACKUP_SUCCESS\n", {

@@ -1,0 +1,26 @@
+# NOT INSTALLED. Docker group is ROOT-EQUIVALENT authority, not a sandbox.
+# The reviewed broker is the only new component permitted to use that socket.
+[Unit]
+Description=Culinote restricted backup Docker broker (proposal)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=culinote-backup-broker
+Group=culinote-backup-bus
+SupplementaryGroups=docker
+ExecStart=/usr/bin/python3 /opt/culinote-backup-tools/TOOL_SHA/scripts/backup/docker_broker.py serve --config /etc/culinote-backup/broker.json --allow-docker-authority
+Environment=PYTHONDONTWRITEBYTECODE=1
+RuntimeDirectory=culinote-backup-broker
+RuntimeDirectoryMode=0750
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/run/culinote-backup-broker
+RestrictAddressFamilies=AF_UNIX

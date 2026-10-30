@@ -221,6 +221,22 @@ it("owner-decrypted payload binds the remote marker without reading an identity 
     loadBackup(copy, source.policy, testSha, "owner-decrypted"),
   ).rejects.toThrow("BINDING");
 });
+it("runtime drift at publication rejects capture without publishing COMPLETE or changing a prior point", async () => {
+  const destination = path.join(source.root, "runtime-drift");
+  await expect(
+    captureBackup({
+      ...source.options,
+      destination,
+      assertRuntime: async () => {
+        throw new Error("RUNTIME_CHANGED_DURING_CAPTURE");
+      },
+    }),
+  ).rejects.toThrow("RUNTIME_CHANGED_DURING_CAPTURE");
+  await expect(readFile(path.join(destination, "COMPLETE"))).rejects.toThrow();
+  await expect(
+    loadBackup(source.options.destination, source.policy, testSha),
+  ).resolves.toBeTruthy();
+}, 60000);
 it("failed media/checksum capture never publishes COMPLETE or invalidates a prior completed point", async () => {
   const corruptMedia = JSON.parse(
     await readFile(

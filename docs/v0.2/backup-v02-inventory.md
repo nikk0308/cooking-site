@@ -59,7 +59,7 @@ npx tsx scripts/backup/prepare.ts --mode inventory --database-env BACKUP_TEST_UR
 # Repeat on a second isolated database after all migrations:
 npx tsx scripts/backup/prepare.ts --mode inventory --database-env BACKUP_UPGRADED_URL --version v0.2 --output /private/reference-v02.json
 npx tsx scripts/backup/prepare.ts --mode policy --v01 /private/reference-v01.json --v02 /private/reference-v02.json --old-sha "$OLD_SHA" --new-sha "$RELEASE_SHA" --output /private/policy.json
-npx tsx scripts/backup/cli.ts --mode capture --policy /private/policy.json --directory /private/new-snapshot --database-env BACKUP_TEST_URL --pg-container "$PG_CONTAINER" --app-container "$APP_CONTAINER" --media /private/source-media --version v0.2
+npx tsx scripts/backup/cli.ts --mode capture --policy /private/policy.json --directory /private/new-snapshot --database-env BACKUP_TEST_URL --pg-container "$PG_CONTAINER" --app-container "$APP_CONTAINER" --media /private/source-media --version v0.2 --runtime-sha "$RELEASE_SHA" --tool-sha "$TOOL_SHA"
 npx tsx scripts/backup/cli.ts --mode validate --policy /private/policy.json --directory /private/new-snapshot --runtime-sha "$RELEASE_SHA"
 ```
 
@@ -69,3 +69,9 @@ old-runtime/new-schema (application rollback), and new-runtime/new-schema are
 allowed. New-runtime/old-schema, unknown SHA, incomplete inventory or mismatched
 tool SHA fail. Changing the protected recovery point is not a capability of this
 tool. Full real-host compatibility and service wiring remain release gates.
+
+Phase 6.8B.1 prepares the [private host environment and broker](backup-bridge-architecture.md)
+and [five-state rehearsal/final freeze](backup-bridge-rehearsal.md). Production
+automation must use the reviewed bridge entrypoint, not an npx invocation that
+could install missing tools. The examples above are isolated, already provisioned
+source commands only. Nothing is installed on the live server.

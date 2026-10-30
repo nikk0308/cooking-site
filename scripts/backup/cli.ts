@@ -21,12 +21,14 @@ const { values: v } = parseArgs({
     media: { type: "string" },
     version: { type: "string" },
     "runtime-sha": { type: "string" },
+    "tool-sha": { type: "string" },
     "confirm-isolated-restore": { type: "boolean" },
     "owner-decrypted-payload": { type: "boolean" },
   },
 });
 let pool: Pool | undefined;
 try {
+  if (process.version !== "v24.20.0") throw new Error("PINNED_NODE_REQUIRED");
   if (!v.policy || !v.directory)
     throw new Error("EXPLICIT_POLICY_AND_DIRECTORY_REQUIRED");
   const policy = releasePolicy.parse(
@@ -44,7 +46,10 @@ try {
     ])
   )
     throw new Error("BACKUP_TOOL_CHECKOUT_NOT_CLEAN");
-  if (toolSha !== policy.toolSha)
+  if (
+    toolSha !== policy.toolSha ||
+    (v["tool-sha"] && v["tool-sha"] !== toolSha)
+  )
     throw new Error("BACKUP_TOOL_SOURCE_MISMATCH");
   if (v.mode === "validate") {
     if (!v["runtime-sha"]) throw new Error("EXPLICIT_RUNTIME_SHA_REQUIRED");
@@ -81,6 +86,8 @@ try {
       if (!v["app-container"] || !["v0.1", "v0.2"].includes(v.version ?? ""))
         throw new Error("EXPLICIT_APP_AND_INVENTORY_VERSION_REQUIRED");
       const runtime = await inspectRuntime(v["app-container"]);
+      if (!v["runtime-sha"] || runtime.sha !== v["runtime-sha"])
+        throw new Error("EXPECTED_RUNTIME_SHA_MISMATCH");
       await captureBackup({
         pool,
         container: v["pg-container"],
@@ -92,6 +99,11 @@ try {
         runtime,
         policy,
         toolSha,
+        assertRuntime: async () => {
+          const current = await inspectRuntime(v["app-container"]!);
+          if (current.sha !== runtime.sha || current.image !== runtime.image)
+            throw new Error("RUNTIME_CHANGED_DURING_CAPTURE");
+        },
       });
       console.log("VERSIONED_LOCAL_BACKUP_COMPLETE=PASS");
     } else if (v.mode === "restore") {

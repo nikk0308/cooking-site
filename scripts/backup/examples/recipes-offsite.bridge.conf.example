@@ -1,0 +1,9 @@
+# NOT INSTALLED. Existing credentials, encryption, GC and timers unchanged.
+# Install source gate only after a verified versioned v0.1 capture. The reviewed
+# private receipt state/backup-bridge-required.json then makes fallback fail closed.
+[Service]
+Environment=CULINOTE_BACKUP_RELEASE_SOURCE=/opt/culinote-backup-tools/TOOL_SHA
+Environment=CULINOTE_BACKUP_RELEASE_POLICY=/etc/culinote-backup/approved-policy.json
+Environment=CULINOTE_BACKUP_NODE=/opt/culinote-backup-env/ENVIRONMENT_ID/node
+Environment=CULINOTE_BACKUP_BRIDGE_REQUIRED=1
+Environment=GIT_OPTIONAL_LOCKS=0
