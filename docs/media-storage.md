@@ -1,5 +1,10 @@
 # Local media storage
 
+The Phase 6.8 [security correction](v0.2/security-remediation.md) adds binary
+JPEG/PNG/WebP preflight before constructing Sharp, a native SVG-loader block,
+and patched framework/native dependencies. A MIME/extension claim is never
+accepted as format evidence; corrupt raster candidates still fail native validation.
+
 MEDIA_ROOT identifies the writable directory. Production Compose mounts required RECIPES_MEDIA_DIR at /app/media; missing source configuration fails closed.
 Expected future host convention: /opt/docker-data/recipes/media. Create it during an separately authorized deployment and assign UID/GID 10001:10001. No server paths are created by application development.
 The rest of /app remains read-only; /tmp and /app/.next/cache keep their tmpfs contracts. Local Compose uses a dedicated named volume.

@@ -100,6 +100,8 @@ jobs:
       - run: npm ci
         timeout-minutes: 5
       - run: npm run format:check
+      - name: Runtime dependency advisory gate (no automatic fixes)
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:unit
@@ -141,6 +143,9 @@ jobs:
         timeout-minutes: 10
       - run: docker build --target maintenance --tag recipes:readiness-maintenance .
         timeout-minutes: 5
+      - name: Verify patched dependencies and decoders in built images
+        run: node scripts/ci/runtime-security.mjs
+        timeout-minutes: 3
       - name: Build disposable ACL acceptance image
         run: docker build --build-arg MEDIA_TEST_BASE=recipes:readiness-maintenance -f tests/media-permissions/Dockerfile -t recipes:media-acl .
         timeout-minutes: 3

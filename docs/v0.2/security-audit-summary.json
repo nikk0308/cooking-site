@@ -1,0 +1,860 @@
+{
+  "base": "4cb6a77e6c35ae9cef9ad6e95b074e570da82ddf",
+  "registry": "https://registry.npmjs.org/",
+  "date": "2026-10-30",
+  "beforeRuntime": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 3,
+      "critical": 1,
+      "total": 4
+    },
+    "packages": [
+      {
+        "name": "next",
+        "severity": "critical",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/next",
+            "version": "16.3.3",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-vcvr-r3jv-pc5j",
+            "title": "Next.js: Remote Code Execution in next/og ImageResponse",
+            "severity": "critical",
+            "range": ">=16.2.0 <16.3.6",
+            "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j"
+          },
+          {
+            "id": "GHSA-3w37-wq28-93x7",
+            "title": "Next.js: Pending `use cache` fill can leak Draft Mode content into regular responses and persisted pages",
+            "severity": "moderate",
+            "range": ">=16.3.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-3w37-wq28-93x7"
+          },
+          {
+            "id": "GHSA-4jqv-mc3x-m676",
+            "title": "Next.js has cache poisoning of SSG and ISR pages in self-hosted applications",
+            "severity": "moderate",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-4jqv-mc3x-m676"
+          },
+          {
+            "id": "GHSA-39w2-rjm5-chcv",
+            "title": "Next.js has information disclosure in development server's Model Context Protocol endpoint",
+            "severity": "low",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-39w2-rjm5-chcv"
+          },
+          {
+            "id": "GHSA-f87g-xv8r-7p7x",
+            "title": "Next.js has information disclosure in App Router metadata image routes via dynamicParams bypass",
+            "severity": "moderate",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-f87g-xv8r-7p7x"
+          },
+          {
+            "id": "GHSA-mcj8-r9mp-w47p",
+            "title": "Next.js has cache poisoning in SSG/ISR rendering that leads to cross-user content substitution and persistent denial of service",
+            "severity": "moderate",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-mcj8-r9mp-w47p"
+          },
+          {
+            "id": "GHSA-cjq9-62q9-8jv4",
+            "title": "Next.js has Server-Side Request Forgery in Image Optimization",
+            "severity": "high",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-cjq9-62q9-8jv4"
+          },
+          {
+            "id": "GHSA-2464-fhr4-w9xw",
+            "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
+            "severity": "critical",
+            "range": ">=16.0.0 <=16.4.0",
+            "url": "https://github.com/advisories/GHSA-2464-fhr4-w9xw"
+          },
+          {
+            "id": "GHSA-p3m5-59mp-jv5r",
+            "title": "Next.js: Denial of Service in App Router using Server Actions",
+            "severity": "high",
+            "range": ">=16.0.0 <=16.4.0",
+            "url": "https://github.com/advisories/GHSA-p3m5-59mp-jv5r"
+          },
+          {
+            "id": "GHSA-h694-7cp9-m8p3",
+            "title": "next.js cache leak across root param values in nested 'use cache' functions",
+            "severity": "moderate",
+            "range": ">=16.3.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-h694-7cp9-m8p3"
+          },
+          {
+            "id": "GHSA-673q-mjm6-r5xr",
+            "title": "Next.js: Unauthenticated Remote Code Execution in `use cache` functions returning typed arrays",
+            "severity": "critical",
+            "range": ">=16.0.0 <=16.4.0",
+            "url": "https://github.com/advisories/GHSA-673q-mjm6-r5xr"
+          }
+        ],
+        "fixAvailable": {
+          "name": "next",
+          "version": "16.4.3",
+          "isSemVerMajor": false
+        }
+      },
+      {
+        "name": "sharp",
+        "severity": "high",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/sharp",
+            "version": "0.35.4",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-wq5f-xc86-pv6w",
+            "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+            "severity": "high",
+            "range": "<0.35.5",
+            "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "source-map-js",
+        "severity": "high",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/source-map-js",
+            "version": "1.2.1",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-68fv-2mgg-jv7q",
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "severity": "high",
+            "range": ">=1.0.0 <1.2.2",
+            "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "zod",
+        "severity": "high",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/zod",
+            "version": "4.5.4",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-mrhx-c7xc-m3w5",
+            "title": "Zod can exhaust memory while validating oversized constrained collections",
+            "severity": "high",
+            "range": "<4.6.6",
+            "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
+          }
+        ],
+        "fixAvailable": true
+      }
+    ]
+  },
+  "beforeAll": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 5,
+      "critical": 1,
+      "total": 12
+    },
+    "packages": [
+      {
+        "name": "@esbuild-kit/core-utils",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@esbuild-kit/core-utils",
+            "version": "3.3.2",
+            "dev": true
+          }
+        ],
+        "via": ["esbuild"],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@esbuild-kit/esm-loader",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@esbuild-kit/esm-loader",
+            "version": "2.6.5",
+            "dev": true
+          }
+        ],
+        "via": ["@esbuild-kit/core-utils"],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@vitest/mocker",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@vitest/mocker",
+            "version": "5.0.0",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-qxg6-89mg-rqv8",
+            "title": "Vitest: Code injection via unauthenticated manual mock registration",
+            "severity": "moderate",
+            "range": ">=5.0.0-beta.1 <5.0.3",
+            "url": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8"
+          },
+          {
+            "id": "GHSA-xp26-3454-mjgp",
+            "title": "Vitest: Windows backslash traversal bypasses the @vitest/mocker redirect allowlist fix",
+            "severity": "moderate",
+            "range": ">=5.0.0-rc.2 <5.0.3",
+            "url": "https://github.com/advisories/GHSA-xp26-3454-mjgp"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+            "version": "5.0.9",
+            "dev": true
+          },
+          {
+            "path": "node_modules/brace-expansion",
+            "version": "1.1.18",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-q2hr-2g5m-vwhr",
+            "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+            "severity": "moderate",
+            "range": "<1.1.21",
+            "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+          },
+          {
+            "id": "GHSA-q2hr-2g5m-vwhr",
+            "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+            "severity": "moderate",
+            "range": ">=4.0.0 <5.0.12",
+            "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+          },
+          {
+            "id": "GHSA-qhr7-859c-m2p7",
+            "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+            "severity": "high",
+            "range": "<1.1.20",
+            "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+          },
+          {
+            "id": "GHSA-qhr7-859c-m2p7",
+            "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+            "severity": "high",
+            "range": ">=4.0.0 <5.0.11",
+            "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+          },
+          {
+            "id": "GHSA-6j4f-fj2g-mc7p",
+            "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+            "severity": "high",
+            "range": "<1.1.19",
+            "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+          },
+          {
+            "id": "GHSA-6j4f-fj2g-mc7p",
+            "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+            "severity": "high",
+            "range": ">=4.0.0 <5.0.10",
+            "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "drizzle-kit",
+        "severity": "moderate",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/drizzle-kit",
+            "version": "0.31.10",
+            "dev": true
+          }
+        ],
+        "via": ["@esbuild-kit/esm-loader"],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "esbuild",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@esbuild-kit/core-utils/node_modules/esbuild",
+            "version": "0.18.20",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-67mh-4wv8-2f99",
+            "title": "esbuild enables any website to send any requests to the development server and read the response",
+            "severity": "moderate",
+            "range": "<=0.24.2",
+            "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99"
+          }
+        ],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "next",
+        "severity": "critical",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/next",
+            "version": "16.3.3",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-vcvr-r3jv-pc5j",
+            "title": "Next.js: Remote Code Execution in next/og ImageResponse",
+            "severity": "critical",
+            "range": ">=16.2.0 <16.3.6",
+            "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j"
+          },
+          {
+            "id": "GHSA-3w37-wq28-93x7",
+            "title": "Next.js: Pending `use cache` fill can leak Draft Mode content into regular responses and persisted pages",
+            "severity": "moderate",
+            "range": ">=16.3.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-3w37-wq28-93x7"
+          },
+          {
+            "id": "GHSA-4jqv-mc3x-m676",
+            "title": "Next.js has cache poisoning of SSG and ISR pages in self-hosted applications",
+            "severity": "moderate",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-4jqv-mc3x-m676"
+          },
+          {
+            "id": "GHSA-39w2-rjm5-chcv",
+            "title": "Next.js has information disclosure in development server's Model Context Protocol endpoint",
+            "severity": "low",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-39w2-rjm5-chcv"
+          },
+          {
+            "id": "GHSA-f87g-xv8r-7p7x",
+            "title": "Next.js has information disclosure in App Router metadata image routes via dynamicParams bypass",
+            "severity": "moderate",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-f87g-xv8r-7p7x"
+          },
+          {
+            "id": "GHSA-mcj8-r9mp-w47p",
+            "title": "Next.js has cache poisoning in SSG/ISR rendering that leads to cross-user content substitution and persistent denial of service",
+            "severity": "moderate",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-mcj8-r9mp-w47p"
+          },
+          {
+            "id": "GHSA-cjq9-62q9-8jv4",
+            "title": "Next.js has Server-Side Request Forgery in Image Optimization",
+            "severity": "high",
+            "range": ">=16.0.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-cjq9-62q9-8jv4"
+          },
+          {
+            "id": "GHSA-2464-fhr4-w9xw",
+            "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
+            "severity": "critical",
+            "range": ">=16.0.0 <=16.4.0",
+            "url": "https://github.com/advisories/GHSA-2464-fhr4-w9xw"
+          },
+          {
+            "id": "GHSA-p3m5-59mp-jv5r",
+            "title": "Next.js: Denial of Service in App Router using Server Actions",
+            "severity": "high",
+            "range": ">=16.0.0 <=16.4.0",
+            "url": "https://github.com/advisories/GHSA-p3m5-59mp-jv5r"
+          },
+          {
+            "id": "GHSA-h694-7cp9-m8p3",
+            "title": "next.js cache leak across root param values in nested 'use cache' functions",
+            "severity": "moderate",
+            "range": ">=16.3.0 <16.3.8",
+            "url": "https://github.com/advisories/GHSA-h694-7cp9-m8p3"
+          },
+          {
+            "id": "GHSA-673q-mjm6-r5xr",
+            "title": "Next.js: Unauthenticated Remote Code Execution in `use cache` functions returning typed arrays",
+            "severity": "critical",
+            "range": ">=16.0.0 <=16.4.0",
+            "url": "https://github.com/advisories/GHSA-673q-mjm6-r5xr"
+          }
+        ],
+        "fixAvailable": {
+          "name": "next",
+          "version": "16.4.3",
+          "isSemVerMajor": false
+        }
+      },
+      {
+        "name": "sharp",
+        "severity": "high",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/sharp",
+            "version": "0.35.4",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-wq5f-xc86-pv6w",
+            "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+            "severity": "high",
+            "range": "<0.35.5",
+            "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "source-map-js",
+        "severity": "high",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/source-map-js",
+            "version": "1.2.1",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-68fv-2mgg-jv7q",
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "severity": "high",
+            "range": ">=1.0.0 <1.2.2",
+            "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "vite",
+        "severity": "high",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/vite",
+            "version": "8.2.2",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-698v-4r3x-3vcv",
+            "title": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-698v-4r3x-3vcv"
+          },
+          {
+            "id": "GHSA-r825-w8mm-5pxw",
+            "title": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-r825-w8mm-5pxw"
+          },
+          {
+            "id": "GHSA-587h-7wmj-h5pm",
+            "title": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+            "severity": "high",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-587h-7wmj-h5pm"
+          },
+          {
+            "id": "GHSA-9jrq-w75r-8gcw",
+            "title": "Vite: Cross origin script execution through Vite custom middleware",
+            "severity": "low",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw"
+          },
+          {
+            "id": "GHSA-rq7h-c2jc-7f22",
+            "title": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22"
+          },
+          {
+            "id": "GHSA-vfpm-58rq-9qcg",
+            "title": "Vite: First 4 bytes of files outside of `server.fs` setting is exposed by `?vite-wasm-instance`",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-vfpm-58rq-9qcg"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "vitest",
+        "severity": "moderate",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/vitest",
+            "version": "5.0.0",
+            "dev": true
+          }
+        ],
+        "via": ["@vitest/mocker"],
+        "fixAvailable": true
+      },
+      {
+        "name": "zod",
+        "severity": "high",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/zod",
+            "version": "4.5.4",
+            "dev": false
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-mrhx-c7xc-m3w5",
+            "title": "Zod can exhaust memory while validating oversized constrained collections",
+            "severity": "high",
+            "range": "<4.6.6",
+            "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
+          }
+        ],
+        "fixAvailable": true
+      }
+    ]
+  },
+  "afterRuntime": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "packages": []
+  },
+  "afterAll": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 2,
+      "critical": 0,
+      "total": 8
+    },
+    "packages": [
+      {
+        "name": "@esbuild-kit/core-utils",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@esbuild-kit/core-utils",
+            "version": "3.3.2",
+            "dev": true
+          }
+        ],
+        "via": ["esbuild"],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@esbuild-kit/esm-loader",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@esbuild-kit/esm-loader",
+            "version": "2.6.5",
+            "dev": true
+          }
+        ],
+        "via": ["@esbuild-kit/core-utils"],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@vitest/mocker",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@vitest/mocker",
+            "version": "5.0.0",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-qxg6-89mg-rqv8",
+            "title": "Vitest: Code injection via unauthenticated manual mock registration",
+            "severity": "moderate",
+            "range": ">=5.0.0-beta.1 <5.0.3",
+            "url": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8"
+          },
+          {
+            "id": "GHSA-xp26-3454-mjgp",
+            "title": "Vitest: Windows backslash traversal bypasses the @vitest/mocker redirect allowlist fix",
+            "severity": "moderate",
+            "range": ">=5.0.0-rc.2 <5.0.3",
+            "url": "https://github.com/advisories/GHSA-xp26-3454-mjgp"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+            "version": "5.0.9",
+            "dev": true
+          },
+          {
+            "path": "node_modules/brace-expansion",
+            "version": "1.1.18",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-q2hr-2g5m-vwhr",
+            "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+            "severity": "moderate",
+            "range": "<1.1.21",
+            "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+          },
+          {
+            "id": "GHSA-q2hr-2g5m-vwhr",
+            "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+            "severity": "moderate",
+            "range": ">=4.0.0 <5.0.12",
+            "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+          },
+          {
+            "id": "GHSA-qhr7-859c-m2p7",
+            "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+            "severity": "high",
+            "range": "<1.1.20",
+            "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+          },
+          {
+            "id": "GHSA-qhr7-859c-m2p7",
+            "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+            "severity": "high",
+            "range": ">=4.0.0 <5.0.11",
+            "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+          },
+          {
+            "id": "GHSA-6j4f-fj2g-mc7p",
+            "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+            "severity": "high",
+            "range": "<1.1.19",
+            "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+          },
+          {
+            "id": "GHSA-6j4f-fj2g-mc7p",
+            "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+            "severity": "high",
+            "range": ">=4.0.0 <5.0.10",
+            "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "drizzle-kit",
+        "severity": "moderate",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/drizzle-kit",
+            "version": "0.31.10",
+            "dev": true
+          }
+        ],
+        "via": ["@esbuild-kit/esm-loader"],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "esbuild",
+        "severity": "moderate",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/@esbuild-kit/core-utils/node_modules/esbuild",
+            "version": "0.18.20",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-67mh-4wv8-2f99",
+            "title": "esbuild enables any website to send any requests to the development server and read the response",
+            "severity": "moderate",
+            "range": "<=0.24.2",
+            "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99"
+          }
+        ],
+        "fixAvailable": {
+          "name": "drizzle-kit",
+          "version": "0.18.1",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "vite",
+        "severity": "high",
+        "direct": false,
+        "instances": [
+          {
+            "path": "node_modules/vite",
+            "version": "8.2.2",
+            "dev": true
+          }
+        ],
+        "via": [
+          {
+            "id": "GHSA-698v-4r3x-3vcv",
+            "title": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-698v-4r3x-3vcv"
+          },
+          {
+            "id": "GHSA-r825-w8mm-5pxw",
+            "title": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-r825-w8mm-5pxw"
+          },
+          {
+            "id": "GHSA-587h-7wmj-h5pm",
+            "title": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+            "severity": "high",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-587h-7wmj-h5pm"
+          },
+          {
+            "id": "GHSA-9jrq-w75r-8gcw",
+            "title": "Vite: Cross origin script execution through Vite custom middleware",
+            "severity": "low",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw"
+          },
+          {
+            "id": "GHSA-rq7h-c2jc-7f22",
+            "title": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22"
+          },
+          {
+            "id": "GHSA-vfpm-58rq-9qcg",
+            "title": "Vite: First 4 bytes of files outside of `server.fs` setting is exposed by `?vite-wasm-instance`",
+            "severity": "moderate",
+            "range": ">=8.2.0 <=8.2.3",
+            "url": "https://github.com/advisories/GHSA-vfpm-58rq-9qcg"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "vitest",
+        "severity": "moderate",
+        "direct": true,
+        "instances": [
+          {
+            "path": "node_modules/vitest",
+            "version": "5.0.0",
+            "dev": true
+          }
+        ],
+        "via": ["@vitest/mocker"],
+        "fixAvailable": true
+      }
+    ]
+  }
+}

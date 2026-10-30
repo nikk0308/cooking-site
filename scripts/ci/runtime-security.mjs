@@ -1,0 +1,84 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+const run = (args, input) => {
+  const result = spawnSync("docker", args, {
+    input,
+    encoding: "utf8",
+    maxBuffer: 4 * 1024 ** 2,
+  });
+  if (result.status !== 0)
+    throw new Error(`ISOLATED_RUNTIME_SECURITY_FAILED: ${result.stderr}`);
+  return result.stdout;
+};
+const root = "node_modules/next/dist/compiled";
+const hashes = {};
+for (const name of ["react-server-dom-webpack", "react-server-dom-turbopack"])
+  for (const file of fs.readdirSync(path.join(root, name, "cjs")))
+    if (file.endsWith(".production.js")) {
+      const relative = `${name}/cjs/${file}`;
+      hashes[relative] = createHash("sha256")
+        .update(fs.readFileSync(path.join(root, relative)))
+        .digest("hex");
+    }
+const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+const expected = {
+  hashes,
+  nextIntegrity: lock.packages["node_modules/next"].integrity,
+};
+const probe = fs.readFileSync("scripts/ci/runtime-security-probe.mjs", "utf8");
+for (const [kind, image] of [
+  ["runtime", "recipes:readiness"],
+  ["maintenance", "recipes:readiness-maintenance"],
+]) {
+  const user = run([
+    "image",
+    "inspect",
+    "--format",
+    "{{.Config.User}}",
+    image,
+  ]).trim();
+  const imageId = run([
+    "image",
+    "inspect",
+    "--format",
+    "{{.Id}}",
+    image,
+  ]).trim();
+  if (kind === "runtime" && user !== "10001:10001")
+    throw Error("RUNTIME_USER_CHANGED");
+  const args = [
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "128",
+    "--memory",
+    "512m",
+    "--tmpfs",
+    "/tmp:rw,nosuid,nodev,size=32m",
+  ];
+  if (kind === "maintenance") args.push("--user", "10001:10001");
+  args.push(
+    "--entrypoint",
+    "node",
+    "-i",
+    image,
+    "--input-type=module",
+    "-",
+    kind,
+  );
+  const output = run(
+    args,
+    `const expected = ${JSON.stringify(expected)};\n${probe}`,
+  );
+  console.log(JSON.stringify({ imageId, kind }));
+  console.log(output.trim());
+}
