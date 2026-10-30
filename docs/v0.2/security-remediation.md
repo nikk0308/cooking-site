@@ -24,6 +24,21 @@ an unbounded dependency refresh. `source-map-js` is updated through its existing
 compatible transitive constraint, not an unrelated new direct dependency.
 Node 24.20.0/base digests, application version and migration history are unchanged.
 
+Next also vendors a Zod-v3-API config/build bundle without a package version at
+`next/dist/compiled/zod`. It is not the root application Zod instance. Next's
+config-schema, segment/middleware config, build analysis and development MCP
+tools use it with trusted source/configuration; application request/import
+schemas import the separately patched root Zod. The image probe verifies this
+exact bundle's code/package hashes against the locked Next package and reports
+the distinction, rather than inventing a version or suppressing arbitrary nested
+copies. Never supply untrusted Next configuration/build inputs; this internal
+bundle is not accepted as a general-purpose untrusted-data validator.
+Application Zod is inlined into standalone server chunks by Webpack; it need not
+have a copied package.json there. The runtime probe records emitted 4.6.6 version
+markers and chunk hashes alongside the lockfile audit. Any independently
+installed copies remain subject to the normal version checks; maintenance keeps
+and checks its actual application Zod package.
+
 Source production-tree audit after correction: **zero findings**. Full audit:
 eight dev-tool package entries (two high, six moderate), no critical. They concern
 Vite/brace-expansion and Vitest/mocker plus drizzle-kit's legacy esbuild chain.
@@ -49,6 +64,10 @@ separate threat model. No `audit fix`, force update or suppression is used.
   react-server-dom package or sufficient evidence by itself. The runtime gate
   hashes shipped production RSC files against the integrity-locked patched Next
   package used during the build, in both runtime and maintenance images.
+  Standalone embeds RSC in `compiled/next-server/app-page.runtime.prod.js` rather
+  than necessarily copying each RSC cjs file. The probe verifies those actual
+  framework runtime bundle hashes (and separate RSC files when present), requiring
+  the App Router RSC runtime, not treating absent standalone cjs files as proof.
 - [GHSA-p3m5-59mp-jv5r](https://github.com/vercel/next.js/security/advisories/GHSA-p3m5-59mp-jv5r)
   is conditional on Server Actions; absence of `use server` is observed in this
   source, but is not a substitute for the patched framework.
@@ -106,6 +125,12 @@ Sharp/libvips/librsvg, real raster decoding/SVG blocking, Node/ABI/ELF metadata,
 absence of dev servers in standalone runtime, and vendored RSC hashes. It prints
 image IDs and safe version evidence, never env values. No lockfile inside the
 slim runtime is assumed. Existing smoke tests check app startup/security flags.
+Standalone Sharp may omit optional native component `versions.json`, reporting
+only Sharp/libvips. That absence is explicitly recorded, never called a patched
+librsvg proof. Both probes hash the actual loaded-platform libvips binary; the
+outer gate requires identical runtime/maintenance native bytes and patched full
+component metadata from maintenance. Missing reference metadata or any binary
+mismatch fails closed. This avoids adding packages or privileges to slim runtime.
 
 All five CI jobs and the complete existing integration/browser/portability,
 ACL/privilege, five-state/recovery/rollback/offsite/retention checks remain
