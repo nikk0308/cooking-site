@@ -56,16 +56,27 @@ export async function storeImage(input: Uint8Array) {
   const storageKey = `${randomUUID()}.webp`,
     destination = mediaPath(root, storageKey),
     temp = path.join(path.resolve(root), `.upload-${randomUUID()}`);
+  let temporaryCreated = false,
+    destinationReserved = false;
   try {
-    const file = await open(temp, "wx", 0o600);
+    // The owner provisions a narrow default reader ACL; mode 0640 permits its
+    // effective read mask without making media world-readable.
+    const file = await open(temp, "wx", 0o640);
+    temporaryCreated = true;
     try {
       await file.writeFile(data);
     } finally {
       await file.close();
     }
+    // Reserve exclusively so rename cannot replace a pre-existing immutable key.
+    // No DB row/public media reference exists until this function succeeds.
+    const reservation = await open(destination, "wx", 0o600);
+    destinationReserved = true;
+    await reservation.close();
     await rename(temp, destination);
   } catch (error) {
-    await unlink(temp).catch(() => {});
+    if (temporaryCreated) await unlink(temp).catch(() => {});
+    if (destinationReserved) await unlink(destination).catch(() => {});
     throw error;
   }
   return {
