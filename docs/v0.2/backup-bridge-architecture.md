@@ -1,5 +1,10 @@
 # Backup bridge preparation — NOT INSTALLED
 
+Source-level bridge/media/broker/security acceptance is consolidated in the
+[Phase 6.8 closeout](phase-6.8-closeout.md). Live UID/GID/ACL/socket, host ABI,
+systemd credentials/sandbox and daemon-side PG drain acceptance remain Phase 7
+gates. No template, source merge or CI proof is an installation authorization.
+
 This is a reviewed-source proposal and isolated rehearsal, not production
 authorization. It extends `cli.ts`, inventory/guard/archive and the existing
 offsite gate. It is not a second database backup system.

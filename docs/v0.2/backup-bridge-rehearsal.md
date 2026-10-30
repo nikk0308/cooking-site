@@ -1,5 +1,9 @@
 # Bridge transition and final freeze
 
+Current source acceptance is in the [Phase 6.8 closeout](phase-6.8-closeout.md).
+This rehearsal is complete in isolation; production installation and final
+identity/policy freeze are unexecuted Phase 7 gates. The sequence below is unchanged.
+
 ## Mandatory isolated evidence
 
 The `backup-bridge` CI job runs non-root Linux, PostgreSQL 18.6 and the pinned
@@ -57,9 +61,11 @@ New local backups remain independent of offsite failures.
 
 ## Final freeze — no feature-branch production policy
 
-Current application candidate is `12fb36f58e6bb759394337487fabb601b3fdce9c`.
-The final TOOL_SHA is deliberately separate: after this PR merges, select its
-exact reviewed merge/source commit and clean checkout. Never substitute a
+Historical bridge-preparation application candidate was
+`12fb36f58e6bb759394337487fabb601b3fdce9c`; it predates media/security corrections
+and is not the current release candidate. The final TOOL_SHA is deliberately
+separate: Phase 7 must select exact reviewed sources and clean checkouts after
+the planned version metadata change and new CI. Never substitute a
 last-file commit or the old application SHA for the actual tool checkout HEAD.
 
 1. Record source, environment artifact ID/attestation, immutable app/PG digests,
@@ -89,9 +95,9 @@ to a nine-table script or bypass deployed-SHA checks.
 
 `package.json`/lockfile currently say 0.1.0. Release identity/backup authorization
 uses exact OCI revision SHA + image ID and schema/tool policy, not that string.
-No version bump is made in bridge work. Before final freeze the owner must either
-accept the displayed package-version limitation with an explicit v0.2 release
-record, or separately review a version bump. A bump changes RELEASE_SHA, needs
+No version bump was made in bridge work. Earlier preparation left the version
+decision open; the current Phase 7 handoff requires a separately reviewed bump
+to 0.2.0 before final freeze. A bump changes RELEASE_SHA, needs
 new build/CI and invalidates previous candidate app/policy bindings.
 
 Real release-bound offsite decrypt/restore remains PENDING_OWNER_AUTHORIZATION.

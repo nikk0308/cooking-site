@@ -1,7 +1,12 @@
 # v0.2 release runbook — NOT authorization to execute
 
+The [Phase 6.8 closeout](phase-6.8-closeout.md) accepts source-level readiness;
+this production sequence remains unexecuted Phase 7 work. The current-v0.1 source
+security exposure and urgent separate hotfix consideration are recorded there.
+PR #14 patches reviewed source, not production. No SHA/image/policy is frozen.
+
 All production writes, tooling installation, migrations, app replacement and
-rollback require a separate owner-approved release. Phase 6.8A changes none of
+rollback require a separate owner-approved release. Engineering readiness changes none of
 them. Execute only from a clean exact reviewed Git commit and locked tool
 dependencies. Do not use moving branch tags as release inputs.
 
