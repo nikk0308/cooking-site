@@ -27,10 +27,13 @@ const expected = {
   hashes,
   nextIntegrity: lock.packages["node_modules/next"].integrity,
 };
+const images = process.argv.slice(2);
+if (images.length !== 0 && images.length !== 2)
+  throw Error("SUPPLY_BOTH_ISOLATED_RUNTIME_AND_MAINTENANCE_IMAGES");
 const probe = fs.readFileSync("scripts/ci/runtime-security-probe.mjs", "utf8");
 for (const [kind, image] of [
-  ["runtime", "recipes:readiness"],
-  ["maintenance", "recipes:readiness-maintenance"],
+  ["runtime", images[0] ?? "recipes:readiness"],
+  ["maintenance", images[1] ?? "recipes:readiness-maintenance"],
 ]) {
   const user = run([
     "image",
