@@ -14,12 +14,37 @@ import threading
 
 CONTRACT = json.loads(Path(__file__).with_name("broker-contract.json").read_text())
 MAX_INPUT = 32 * 1024**3
-READ_ROLE_SQL = """SELECT NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
+# Effective persistent-object privileges, not arbitrary-SQL sandboxing. The exact
+# built-in pg_settings view implements session SET; restricted SET/ALTER SYSTEM
+# rights are checked separately. Unknown user schemas/definers fail closed.
+READ_ROLE_SQL = """WITH inspected_role AS (
+ SELECT * FROM pg_roles WHERE rolname=current_user
+), user_schemas AS (
+ SELECT * FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
+)
+SELECT NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
  AND NOT has_database_privilege(current_database(),'CREATE')
- AND NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname IN ('public','drizzle') AND has_schema_privilege(oid,'CREATE'))
- AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','drizzle') AND c.relkind IN ('r','p') AND has_table_privilege(c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'))
- AND NOT EXISTS (SELECT 1 FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user))
- FROM pg_roles WHERE rolname=current_user"""
+ AND NOT EXISTS (SELECT 1 FROM pg_database WHERE datname=current_database() AND datdba=inspected_role.oid)
+ AND NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname !~ '^pg_(temp|toast_temp)_' AND (nspowner=inspected_role.oid OR has_schema_privilege(oid,'CREATE')))
+ AND NOT EXISTS (SELECT 1 FROM user_schemas WHERE nspname NOT IN ('public','drizzle'))
+ AND NOT EXISTS (
+  SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname !~ '^pg_(temp|toast_temp)_' AND c.relkind IN ('r','p','v','m','f')
+   AND c.oid <> 'pg_catalog.pg_settings'::regclass
+   AND (c.relowner=inspected_role.oid
+    OR has_table_privilege(c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+    OR has_any_column_privilege(c.oid,'INSERT,UPDATE,REFERENCES'))
+ )
+ AND NOT EXISTS (
+  SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname !~ '^pg_(temp|toast_temp)_' AND c.relkind='S'
+   AND (c.relowner=inspected_role.oid OR has_sequence_privilege(c.oid,'USAGE,UPDATE'))
+ )
+ AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN user_schemas n ON n.oid=p.pronamespace WHERE p.proowner=inspected_role.oid OR (p.prosecdef AND has_function_privilege(p.oid,'EXECUTE')))
+ AND NOT EXISTS (SELECT 1 FROM pg_type t JOIN user_schemas n ON n.oid=t.typnamespace WHERE t.typowner=inspected_role.oid)
+ AND NOT EXISTS (SELECT 1 FROM pg_parameter_acl a LEFT JOIN pg_settings s ON s.name=a.parname WHERE has_parameter_privilege(a.parname,'ALTER SYSTEM') OR ((s.name IS NULL OR s.context IN ('superuser','superuser-backend')) AND has_parameter_privilege(a.parname,'SET')))
+ AND NOT EXISTS (SELECT 1 FROM pg_auth_members WHERE member=inspected_role.oid)
+ FROM inspected_role"""
 
 
 def private_file(path):
