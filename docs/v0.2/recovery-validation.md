@@ -1,12 +1,19 @@
 # Recovery evidence and limits
 
+Current merged-source acceptance is consolidated in the
+[Phase 6.8 closeout](phase-6.8-closeout.md): nine recovery tests, including mixed
+historical CRLF/LF ledger restore, passed after the security merge. This remains
+isolated synthetic evidence. Phase 7 real release-bound offsite decrypt/restore,
+actual old-image/config preservation and fresh checkpoint are NOT completed.
+
 Local synthetic PostgreSQL 18 full dump/media restore: **PASS**.
 `tests/recovery/inventory-restore.test.ts` verifies exact schema/data hashes,
 UUIDs/FKs, receipts/source mapping, provenance and decimal strings, media hashes,
 UNCHANGED repeat import, working revision triggers and post-restore recipe writes.
 Checksum corruption, incomplete inventory, disabled/missing schema objects,
 nonempty or non-isolated targets and failed media capture are rejected.
-The test was rerun only after changes to the restore adapter.
+Initial local testing avoided redundant restore reruns; the expanded mandatory
+CI now exercises recovery on each exact reviewed and merged source.
 
 `application-rollback.test.ts` additionally requires Linux Docker runtime and
 rebuilt v0.1 images, starts each against a restored synthetic database, verifies
@@ -14,7 +21,7 @@ readiness/public media/admin login, non-root/read-only execution and extended
 catalog preservation through the old admin API. Its mandatory CI result is the
 application startup/rollback evidence; a SQL restore alone is not that proof.
 
-Production backup metadata: no new snapshot download or production DB inspection
+Historical readiness production metadata: no new snapshot download or production DB inspection
 was performed. Installed backup source was inspected read-only to understand the
 old schema/SHA guards. Prior recovery-verified point remains
 `20261027T155249Z-012c8349-1a6e2ddc5110`; this phase does not change its protection.

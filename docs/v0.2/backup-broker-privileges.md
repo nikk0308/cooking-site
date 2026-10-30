@@ -1,5 +1,9 @@
 # Backup broker effective privilege contract
 
+The [Phase 6.8 closeout](phase-6.8-closeout.md) records 34 real PostgreSQL18.6
+privilege cases and bridge acceptance on the security-merged source. This is
+source/test acceptance, not installation of a production role, socket or broker.
+
 This source correction is NOT installed. No production credentials or policy are
 included. The fixed Docker operations, target/image/project checks, Unix peer UID
 and non-root runner boundary are unchanged.

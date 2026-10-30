@@ -1,8 +1,20 @@
 # Phase 6.8 security correction — not release approval
 
 Base source: `4cb6a77e6c35ae9cef9ad6e95b074e570da82ddf`.
-This corrects the security closeout blocker; it does not close Phase 6.8 or
-authorize production operations. Application version remains `0.1.0`.
+This correction alone did not close Phase 6.8 or authorize production operations.
+Application version remains `0.1.0`.
+
+## Merged-source security acceptance — 30 October 2026
+
+[PR #14](https://github.com/nikk0308/cooking-site/pull/14) merged as
+`e51ee79c07eb74c85d1ae63ab0061e3cc755dc1b`.
+[New security post-merge CI](https://github.com/nikk0308/cooking-site/actions/runs/41064163713)
+passed all five jobs, including fresh npm ci, zero production audit findings and
+actual runtime/maintenance native/RSC/SVG probes. The residual dev-tool findings
+below remain reported, not suppressed or universally declared safe. Overall
+closure and production-only gates are in the [Phase 6.8 closeout](phase-6.8-closeout.md).
+No production software was patched by this merge; the urgent v0.1 action below
+remains unresolved. The baseline and initial correction evidence are retained.
 
 ## Runtime baseline and selected corrections
 
