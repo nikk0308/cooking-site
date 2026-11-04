@@ -26,6 +26,20 @@ describe("owner-decrypted COMPLETE wire types", () => {
       ).toThrow();
     });
   }
+  it("rejects duplicate keys, including escaped and nested spellings", () => {
+    for (const text of [
+      '{"format":true,"format":1}',
+      '{"format":1,"\\u0066ormat":1}',
+      '{"objects":{"media":{"bytes":1,"bytes":1}}}',
+    ])
+      expect(() => parseRemoteMarker(text)).toThrow(
+        "INVALID_REMOTE_MARKER_JSON",
+      );
+    expect(parseRemoteMarker('{"a":{"bytes":1},"b":{"bytes":1}}')).toEqual({
+      a: { bytes: 1 },
+      b: { bytes: 1 },
+    });
+  });
   it("rejects unsafe rounded sizes", () => {
     expect(() => parseRemoteMarker('{"bytes":9007199254740993}')).toThrow(
       "INVALID_REMOTE_MARKER_NUMBER",
