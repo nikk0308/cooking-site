@@ -30,7 +30,7 @@ def atomic(path,data):
  with os.fdopen(fd,"w") as f:json.dump(data,f,indent=2);f.flush();os.fsync(f.fileno())
  os.replace(tmp,path)
 def read_json(path):
- with open(path) as f:return json.load(f)
+ with open(path) as f:return retention.strict_json_loads(f.read())
 def load_config():
  p=PRIVATE/"config.json"
  if not p.exists():raise GateError("OWNER_CONFIGURATION_REQUIRED")
@@ -117,8 +117,8 @@ def prepare(local,manifest,cfg):
  STAGING.mkdir(mode=0o700,exist_ok=True);dest=STAGING/sid
  if dest.exists():
   if not (dest/"staging.json").is_file():raise GateError("STAGING_INCOMPLETE_REQUIRES_REVIEW")
-  marker=read_json(dest/"staging.json")
-  if marker["local_manifest_sha256"]!=sha(local/"manifest.json") or marker["recipient_fingerprint"]!=fingerprint:raise GateError("STAGING_IDENTITY_MISMATCH")
+  marker=validate_marker(read_json(dest/"staging.json"))
+  if marker["snapshot"]!=sid or marker["local_manifest_sha256"]!=sha(local/"manifest.json") or marker["recipient_fingerprint"]!=fingerprint or marker["source_sha"]!=manifest["source_sha"] or marker["backup_created_utc"]!=manifest["completed_utc"]:raise GateError("STAGING_IDENTITY_MISMATCH")
   for name,data in marker["objects"].items():
    if sha(dest/name)!=data["sha256"] or (dest/name).stat().st_size!=data["bytes"]:raise GateError("STAGING_CIPHERTEXT_CORRUPT")
   return dest,marker
@@ -155,19 +155,35 @@ def get_marker(s3,key):
  try:data=body.read(1048577)
  finally:body.close()
  if len(data)>1048576:raise GateError("REMOTE_MARKER_TOO_LARGE")
- return json.loads(data)
+ return retention.strict_json_loads(data)
 def validate_marker(d):
- if d.get("application")!=APP or not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{12}",d.get("snapshot","")):raise GateError("UNRECOGNIZED_REMOTE_POINT")
- if set(d["objects"])!={"database.encrypted","media.encrypted","manifest.encrypted"}:raise GateError("INCOMPLETE_REMOTE_POINT")
+ if type(d) is not dict:raise GateError("INVALID_REMOTE_MARKER")
+ if type(d.get("format")) is not int or d["format"]!=1:raise GateError("INVALID_REMOTE_MARKER_FORMAT")
+ if d.get("application")!=APP or type(d.get("snapshot")) is not str or not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}-[0-9a-f]{12}",d["snapshot"]):raise GateError("UNRECOGNIZED_REMOTE_POINT")
+ if type(d.get("objects")) is not dict or set(d["objects"])!={"database.encrypted","media.encrypted","manifest.encrypted"}:raise GateError("INCOMPLETE_REMOTE_POINT")
  for name,item in d["objects"].items():
-  if item["key"]!="culinote/blobs/"+d["snapshot"]+"/"+name or not re.fullmatch(r"[a-f0-9]{64}",item["sha256"]):raise GateError("UNSAFE_REMOTE_OBJECT_REFERENCE")
+  if type(item) is not dict or item.get("key")!="culinote/blobs/"+d["snapshot"]+"/"+name or type(item.get("sha256")) is not str or not re.fullmatch(r"[a-f0-9]{64}",item["sha256"]):raise GateError("UNSAFE_REMOTE_OBJECT_REFERENCE")
+  if type(item.get("bytes")) is not int or item["bytes"]<=0:raise GateError("INVALID_REMOTE_OBJECT_SIZE")
+ for field,length in (("source_sha",40),("recipient_fingerprint",64),("local_manifest_sha256",64)):
+  if type(d.get(field)) is not str or not re.fullmatch("[a-f0-9]{"+str(length)+"}",d[field]):raise GateError("INVALID_REMOTE_MARKER_IDENTITY")
+ if type(d.get("backup_created_utc")) is not str:raise GateError("INVALID_REMOTE_MARKER_TIMESTAMP")
+ retention.period_keys(d)
+ if d.get("private_identity_on_server") is not False:raise GateError("INVALID_REMOTE_PRIVATE_IDENTITY")
+ retention.marker_digest(d)
  return d
+
 def publish(s3,dest,marker):
  validate_marker(marker)
  sid=marker["snapshot"];key="culinote/daily/"+sid+"/COMPLETE"
+ # Check every existing reference before any upload/publication mutation.
+ for reference in (key,*retention.period_keys(marker)):
+  if object_exists(s3,reference):
+   previous=validate_marker(get_marker(s3,reference))
+   if (reference==key or previous["snapshot"]==sid) and not retention.same_marker(previous,marker):raise GateError("IMMUTABLE_REMOTE_POINT_CONFLICT")
+   if reference!=key and reference not in retention.period_keys(previous):raise GateError("PERIOD_REFERENCE_MISMATCH")
  if object_exists(s3,key):
   old=validate_marker(get_marker(s3,key))
-  if old!=marker:raise GateError("IMMUTABLE_REMOTE_POINT_CONFLICT")
+  if not retention.same_marker(old,marker):raise GateError("IMMUTABLE_REMOTE_POINT_CONFLICT")
  for name,item in marker["objects"].items():
   exists=object_exists(s3,item["key"])
   if not exists:
@@ -177,13 +193,14 @@ def publish(s3,dest,marker):
  payload=json.dumps(marker,sort_keys=True,separators=(",",":")).encode()
  if not object_exists(s3,key):
   s3.put_object(Bucket=BUCKET,Key=key,Body=payload,ACL="private",ContentType="application/json")
- if get_marker(s3,key)!=marker:raise GateError("REMOTE_COMPLETE_MARKER_MISMATCH")
+ if not retention.same_marker(validate_marker(get_marker(s3,key)),marker):raise GateError("REMOTE_COMPLETE_MARKER_MISMATCH")
  if not anonymous_denied(ORIGIN+"/"+key):raise GateError("REMOTE_COMPLETE_MARKER_PUBLIC")
  month=marker["backup_created_utc"][:7]
  monthly="culinote/monthly/"+month+"/COMPLETE"
  if not object_exists(s3,monthly):
   s3.put_object(Bucket=BUCKET,Key=monthly,Body=payload,ACL="private",ContentType="application/json")
- validate_marker(get_marker(s3,monthly))
+ monthly_marker=validate_marker(get_marker(s3,monthly))
+ if monthly_marker["snapshot"]==sid and not retention.same_marker(monthly_marker,marker):raise GateError("IMMUTABLE_REMOTE_POINT_CONFLICT")
  if not anonymous_denied(ORIGIN+"/"+monthly):raise GateError("REMOTE_MONTHLY_MARKER_PUBLIC")
  retention.ensure_periods(sys.modules[__name__],s3,marker)
  return key
@@ -248,9 +265,11 @@ def watchdog():
  s3=client()
  marker=validate_marker(get_marker(s3,s["complete_key"]))
  if s["complete_key"]!="culinote/daily/"+s["snapshot"]+"/COMPLETE" or marker["snapshot"]!=s["snapshot"]:raise GateError("REMOTE_COMPLETE_STATE_MISMATCH")
+ if "marker_sha256" in s and s["marker_sha256"]!=retention.marker_digest(marker):raise GateError("REMOTE_COMPLETE_IDENTITY_MISMATCH")
  for item in marker["objects"].values():verify_object(s3,item["key"],item)
  for period_key in retention.period_keys(marker):
   period_marker=validate_marker(get_marker(s3,period_key))
+  if period_marker["snapshot"]==marker["snapshot"] and not retention.same_marker(period_marker,marker):raise GateError("REMOTE_COMPLETE_IDENTITY_MISMATCH")
   if period_key not in retention.period_keys(period_marker):raise GateError("PERIOD_REFERENCE_MISMATCH")
   for item in period_marker["objects"].values():verify_object(s3,item["key"],item)
  print("CULINOTE_OFFSITE_WATCHDOG_PASS snapshot="+s["snapshot"]+"; complete-and-full-ciphertext-sha256=PASS")
@@ -277,7 +296,7 @@ def main(mode="upload"):
   if shutil.disk_usage(STAGING.parent).free<10*1024**3:raise GateError("OFFSITE_FREE_SPACE_BELOW_10_GIB")
   dest,marker=prepare(local,m,cfg)
   key=publish(s3,dest,marker)
-  success={"snapshot":marker["snapshot"],"complete_key":key,"backup_created_utc":marker["backup_created_utc"],"verified_utc":now().isoformat(),"source_sha":marker["source_sha"],"remote_ciphertext_verification":"PASS","decryption_restore":("PASS" if (STATE/"remote-restore-proof.json").exists() and read_json(STATE/"remote-restore-proof.json").get("snapshot")==marker["snapshot"] and read_json(STATE/"remote-restore-proof.json").get("status")=="PASS" else "PENDING_OWNER_DRILL"),"probe":probe_result}
+  success={"snapshot":marker["snapshot"],"complete_key":key,"backup_created_utc":marker["backup_created_utc"],"verified_utc":now().isoformat(),"source_sha":marker["source_sha"],"marker_sha256":retention.marker_digest(marker),"remote_ciphertext_verification":"PASS","decryption_restore":("PASS" if (STATE/"remote-restore-proof.json").exists() and read_json(STATE/"remote-restore-proof.json").get("snapshot")==marker["snapshot"] and read_json(STATE/"remote-restore-proof.json").get("status")=="PASS" else "PENDING_OWNER_DRILL"),"probe":probe_result}
   atomic(STATE/"last-success.json",success)
   print("CULINOTE_ENCRYPTED_OFFSITE_UPLOAD_VERIFIED snapshot="+marker["snapshot"]+"; ciphertext verified; consult remote-restore-proof for owner restore coverage")
  finally:lock.close()

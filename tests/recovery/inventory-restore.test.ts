@@ -212,6 +212,23 @@ it("owner-decrypted payload binds the remote marker without reading an identity 
   await expect(
     loadBackup(copy, source.policy, testSha, "owner-decrypted"),
   ).resolves.toBeTruthy();
+  for (const [token, reason] of [
+    ["true", "expected 1"],
+    ["1.0", "INVALID_REMOTE_MARKER_NUMBER"],
+    ["1e0", "INVALID_REMOTE_MARKER_NUMBER"],
+  ]) {
+    await writeFile(
+      path.join(copy, "REMOTE-COMPLETE.json"),
+      JSON.stringify(marker).replace('"format":1', `"format":${token}`),
+    );
+    await expect(
+      loadBackup(copy, source.policy, testSha, "owner-decrypted"),
+    ).rejects.toThrow(reason);
+    await expect(readFile(path.join(copy, "COMPLETE"))).rejects.toThrow();
+    await expect(
+      loadBackup(source.options.destination, source.policy, testSha),
+    ).resolves.toBeTruthy();
+  }
   marker.local_manifest_sha256 = "b".repeat(64);
   await writeFile(
     path.join(copy, "REMOTE-COMPLETE.json"),

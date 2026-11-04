@@ -1,3 +1,4 @@
+import { parseRemoteMarker } from "./remote-marker";
 import { spawn } from "node:child_process";
 import { createReadStream, createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
@@ -432,7 +433,7 @@ export async function loadBackup(
         ),
       })
       .parse(
-        JSON.parse(
+        parseRemoteMarker(
           await readFile(path.join(root, "REMOTE-COMPLETE.json"), "utf8"),
         ),
       );

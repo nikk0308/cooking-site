@@ -506,6 +506,7 @@ class RetentionTests(unittest.TestCase):
             with patch.object(r, "cycle", side_effect=OSError("Synthetic GC state write failure")):
                 module.main("upload")
         success = API.read_json(API.STATE / "last-success.json")
+        self.assertEqual(success["marker_sha256"], r.marker_digest(self.markers[-1]))
         self.assertEqual(success["remote_ciphertext_verification"], "PASS")
         self.assertEqual(API.events[-1]["event"], "ERROR")
 
