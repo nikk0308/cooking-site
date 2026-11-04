@@ -188,6 +188,42 @@ class CompleteIdentity(unittest.TestCase):
         self.assertEqual(before, (dest / "staging.json").read_bytes())
         self.assertFalse(self.store.puts or self.store.deletes)
 
+    def test_staging_replay_binds_derived_snapshot_and_manifest(self):
+        self.api["STAGING"] = self.root
+        cfg = {"recipient": "test-only-recipient"}
+        fingerprint = hashlib.sha256(cfg["recipient"].encode()).hexdigest()
+        local = self.root / self.sid.rsplit("-", 1)[0]
+        local.mkdir()
+        (local / "manifest.json").write_text("synthetic manifest")
+        sid = local.name + "-" + fingerprint[:12]
+        dest = self.root / sid
+        dest.mkdir()
+        marker = copy.deepcopy(self.marker)
+        marker.update(snapshot=sid, recipient_fingerprint=fingerprint,
+                      local_manifest_sha256=self.api["sha"](local / "manifest.json"))
+        for name, item in marker["objects"].items():
+            item["key"] = f"culinote/blobs/{sid}/{name}"
+            (dest / name).write_bytes(b"x")
+        stage = dest / "staging.json"
+        stage.write_text(json.dumps(marker))
+        manifest = dict(source_sha=marker["source_sha"], completed_utc=marker["backup_created_utc"])
+        before = stage.read_bytes()
+        self.assertEqual(self.api["prepare"](local, manifest, cfg), (dest, marker))
+        self.assertEqual(before, stage.read_bytes())
+        for field, value in (("snapshot", self.sid), ("source_sha", "d" * 40),
+                             ("backup_created_utc", "2026-11-03T02:40:27+00:00")):
+            bad = copy.deepcopy(marker)
+            bad[field] = value
+            if field == "snapshot":
+                for name, item in bad["objects"].items():
+                    item["key"] = f"culinote/blobs/{value}/{name}"
+            stage.write_text(json.dumps(bad))
+            before = stage.read_bytes()
+            with self.assertRaisesRegex(Exception, "^STAGING_IDENTITY_MISMATCH$"):
+                self.api["prepare"](local, manifest, cfg)
+            self.assertEqual(before, stage.read_bytes())
+            self.assertFalse(self.store.puts or self.store.deletes)
+
     def test_strict_wire_json(self):
         for value in ('{"format":1,"format":true}', '{"size":NaN}', '{"size":Infinity}', '{'):
             self.reject("INVALID_MARKER_JSON", lambda: retention.strict_json_loads(value))

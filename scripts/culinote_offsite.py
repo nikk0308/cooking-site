@@ -118,7 +118,7 @@ def prepare(local,manifest,cfg):
  if dest.exists():
   if not (dest/"staging.json").is_file():raise GateError("STAGING_INCOMPLETE_REQUIRES_REVIEW")
   marker=validate_marker(read_json(dest/"staging.json"))
-  if marker["local_manifest_sha256"]!=sha(local/"manifest.json") or marker["recipient_fingerprint"]!=fingerprint or marker["source_sha"]!=manifest["source_sha"] or marker["backup_created_utc"]!=manifest["completed_utc"]:raise GateError("STAGING_IDENTITY_MISMATCH")
+  if marker["snapshot"]!=sid or marker["local_manifest_sha256"]!=sha(local/"manifest.json") or marker["recipient_fingerprint"]!=fingerprint or marker["source_sha"]!=manifest["source_sha"] or marker["backup_created_utc"]!=manifest["completed_utc"]:raise GateError("STAGING_IDENTITY_MISMATCH")
   for name,data in marker["objects"].items():
    if sha(dest/name)!=data["sha256"] or (dest/name).stat().st_size!=data["bytes"]:raise GateError("STAGING_CIPHERTEXT_CORRUPT")
   return dest,marker
