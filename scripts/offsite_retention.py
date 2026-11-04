@@ -55,6 +55,48 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def strict_json_loads(value):
+    def pairs(items):
+        result = {}
+        for key, item in items:
+            if key in result:
+                fail("INVALID_MARKER_JSON")
+            result[key] = item
+        return result
+    def constant(_):
+        fail("INVALID_MARKER_JSON")
+    try:
+        return json.loads(value, object_pairs_hook=pairs, parse_constant=constant)
+    except (ValueError, UnicodeError):
+        fail("INVALID_MARKER_JSON")
+
+
+def marker_digest(marker):
+    # JSON encoding preserves bool/int/float identity; Python equality does not.
+    # Permit historical extension fields, but never non-JSON or nonfinite values.
+    def check(value):
+        if type(value) is dict:
+            if any(type(key) is not str for key in value):
+                fail("INVALID_MARKER_JSON")
+            for item in value.values():
+                check(item)
+        elif type(value) is list:
+            for item in value:
+                check(item)
+        elif value is not None and type(value) not in (str, int, float, bool):
+            fail("INVALID_MARKER_JSON")
+    check(marker)
+    try:
+        encoded = json.dumps(marker, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    except (ValueError, TypeError):
+        fail("INVALID_MARKER_JSON")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def same_marker(left, right):
+    return marker_digest(left) == marker_digest(right)
+
+
 def catalog(api, s3):
     # Limited keys need object access, never bucket administration permissions.
     if getattr(api, "BUCKET", BUCKET) != BUCKET:
@@ -77,7 +119,7 @@ def catalog(api, s3):
                 fail("RETENTION_DAILY_REFERENCE_MISMATCH")
         elif key not in period_keys(marker):
             fail("RETENTION_PERIOD_REFERENCE_MISMATCH")
-        if sid in snapshots and snapshots[sid] != marker:
+        if sid in snapshots and not same_marker(snapshots[sid], marker):
             fail("RETENTION_CONFLICTING_SNAPSHOT")
         snapshots[sid] = marker
         markers[key] = marker
@@ -107,6 +149,8 @@ def ensure_periods(api, s3, marker):
                           Body=json.dumps(marker, sort_keys=True, separators=(",", ":")).encode(),
                           ACL="private", ContentType="application/json")
         actual = api.validate_marker(api.get_marker(s3, key))
+        if actual["snapshot"] == marker["snapshot"] and not same_marker(actual, marker):
+            fail("RETENTION_CONFLICTING_SNAPSHOT")
         if key not in period_keys(actual):
             fail("RETENTION_PERIOD_REFERENCE_MISMATCH")
         for item in actual["objects"].values():
@@ -129,6 +173,8 @@ def _plan(objects, markers, snapshots, proof, last_success, upload_failure=None)
         fail("RETENTION_RESTORED_SNAPSHOT_MISSING")
     if last_success["complete_key"] not in markers or markers[last_success["complete_key"]]["snapshot"] != last_success["snapshot"]:
         fail("RETENTION_LAST_SUCCESS_MISSING")
+    if "marker_sha256" in last_success and last_success["marker_sha256"] != marker_digest(markers[last_success["complete_key"]]):
+        fail("RETENTION_LAST_SUCCESS_IDENTITY_MISMATCH")
     # One daily point per UTC day, even if an operator created multiple backups.
     days = {}
     for key, marker in sorted(markers.items(), key=lambda pair: (stamp(pair[1]), pair[0]), reverse=True):
@@ -202,7 +248,7 @@ def _execute_locked(api, s3, approved, proof, last_success, upload_failure, *, a
             if head["ETag"] != item["etag"] or head["ContentLength"] != item["bytes"]:
                 fail("RETENTION_OBJECT_CHANGED")
             if MARKER.fullmatch(live_key):
-                if api.validate_marker(api.get_marker(s3, live_key)) != markers[live_key]:
+                if not same_marker(api.validate_marker(api.get_marker(s3, live_key)), markers[live_key]):
                     fail("RETENTION_REFERENCE_CHANGED")
             else:
                 sid = BLOB.fullmatch(live_key)[1]
